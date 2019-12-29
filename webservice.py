@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 """RobotWebService
@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 import logging
 from requests.auth import HTTPDigestAuth
 import requests
+#from aprolpython.robotresource import RobotResource
 
 
 class WebService(object):
@@ -42,6 +43,10 @@ class WebService(object):
         root = ET.fromstring(resp.text)
         self.__ctrl = {}
         self.__rw = {}
+        if not self.__rw.has_key("system"):
+            self.__rw["system"] = {}
+        if not self.__rw.has_key("panel"):
+            self.__rw["panel"] = {}
 
         if root.findall(".//{0}li[@class='ctrl-identity-info-li']".format(self.__namespace)):
             self.__ctrl["name"] = root.find(
@@ -60,7 +65,7 @@ class WebService(object):
         self.refresh_rw()
 
         self.__logger = WebService.get_logging()
-        self.__logger.debug(self.__ctrl["name"])
+        self.__logger.debug(self.__ctrl)
         self.__logger.debug(self.__rw)
 
     @staticmethod
@@ -71,7 +76,8 @@ class WebService(object):
         logger = logging.getLogger('WebService')
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
-        filehandler = logging.FileHandler('/home/engin/source/repos/robot/robotwebservice.log')
+        filehandler = logging.FileHandler(
+            '/home/engin/source/repos/aprolpython/robotwebservice.log')
         filehandler.setFormatter(formatter)
         logger.addHandler(filehandler)
         return logger
@@ -81,12 +87,47 @@ class WebService(object):
         The response data format is json.
         """
         # For json format data
-        url = "http://{0}:{1}/rw/system?json=1".format(self.__host, self.__port)
+        #url = "http://{0}:{1}/rw/system?json=1".format(self.__host, self.__port)
+        #resp = self.__session.get(url, cookies=self.__cookies)
+        #obj = json.loads(resp.text)
+        #self.__rw["system_name"] = obj["_embedded"]["_state"][0]["name"]
+        #self.__rw["rw_version"] = obj["_embedded"]["_state"][0]["rwversion"]
+        #self.__rw["sysid"] = obj["_embedded"]["_state"][0]["sysid"]
+        #self.__rw["system_name"] = self.get_rws_resource("rw/system", "name")
+
+        self.refresh_rws_resources("rw/system", ("name", "sysid", "rwversion"), self.__rw["system"])
+        #self.__rw["panel"]["ctrlstate"] = self.get_rws_resource("rw/panel/ctrlstate", "ctrlstate")
+        #self.__rw["panel"]["opmode"] = self.get_rws_resource("rw/panel/opmode", "opmode")
+        #self.__rw["panel"]["speedratio"] = \
+        #    self.get_rws_resource("rw/panel/speedratio", "speedratio")
+        self.refresh_rws_resources(\
+            ("rw/panel/ctrlstate", "rw/panel/opmode", "rw/panel/speedratio"), \
+            ("ctrlstate", "opmode", "speedratio"), \
+            self.__rw["panel"])
+
+    def get_rws_resource(self, resource, key):
+        """get_rws_resource
+        """
+        url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
         resp = self.__session.get(url, cookies=self.__cookies)
         obj = json.loads(resp.text)
-        self.__rw["system_name"] = obj["_embedded"]["_state"][0]["name"]
-        self.__rw["rw_version"] = obj["_embedded"]["_state"][0]["rwversion"]
-        self.__rw["sysid"] = obj["_embedded"]["_state"][0]["sysid"]
+        return obj["_embedded"]["_state"][0][key]
+
+    def refresh_rws_resources(self, resources, keys, values):
+        """refresh_rws_resources
+        """
+        if isinstance(resources, tuple):
+            for resource, key in zip(resources, keys):
+                url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
+                resp = self.__session.get(url, cookies=self.__cookies)
+                obj = json.loads(resp.text)
+                values[key] = obj["_embedded"]["_state"][0][key]
+        else:
+            url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resources)
+            resp = self.__session.get(url, cookies=self.__cookies)
+            obj = json.loads(resp.text)
+            for key in keys:
+                values[key] = obj["_embedded"]["_state"][0][key]
 
     def get_host(self):
         """RobotWebService
@@ -152,8 +193,9 @@ def main(argv):
         web_service = WebService(port=8610)
         print (web_service.get_ctrl())
         print (web_service.get_rw())
-    except KeyboardInterrupt:
         web_service.close_session()
+    except requests.ConnectionError:
+        print ("ConnectionError")
 
 
 if __name__ == "__main__":
