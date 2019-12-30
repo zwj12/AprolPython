@@ -43,10 +43,14 @@ class WebService(object):
         root = ET.fromstring(resp.text)
         self.__ctrl = {}
         self.__rw = {}
-        if not self.__rw.has_key("system"):
+        if "system" not in self.__rw:
             self.__rw["system"] = {}
-        if not self.__rw.has_key("panel"):
+        if "panel" not in self.__rw:
             self.__rw["panel"] = {}
+        if "rapid" not in self.__rw:
+            self.__rw["rapid"] = {}
+        if "execution" not in self.__rw["rapid"]:
+            self.__rw["rapid"]["execution"] = {}
 
         if root.findall(".//{0}li[@class='ctrl-identity-info-li']".format(self.__namespace)):
             self.__ctrl["name"] = root.find(
@@ -95,7 +99,11 @@ class WebService(object):
         #self.__rw["sysid"] = obj["_embedded"]["_state"][0]["sysid"]
         #self.__rw["system_name"] = self.get_rws_resource("rw/system", "name")
 
-        self.refresh_rws_resources("rw/system", ("name", "sysid", "rwversion"), self.__rw["system"])
+        self.refresh_rws_resources("rw/system", \
+            ("name", "sysid", "rwversion", "starttm"), \
+            self.__rw["system"])
+        self.refresh_rws_resources("rw/system/robottype", ("robot-type",), self.__rw["system"])
+        self.refresh_rws_resources("rw/system/options", ("option",), self.__rw["system"])
         #self.__rw["panel"]["ctrlstate"] = self.get_rws_resource("rw/panel/ctrlstate", "ctrlstate")
         #self.__rw["panel"]["opmode"] = self.get_rws_resource("rw/panel/opmode", "opmode")
         #self.__rw["panel"]["speedratio"] = \
@@ -104,6 +112,8 @@ class WebService(object):
             ("rw/panel/ctrlstate", "rw/panel/opmode", "rw/panel/speedratio"), \
             ("ctrlstate", "opmode", "speedratio"), \
             self.__rw["panel"])
+        self.refresh_rws_resources("rw/rapid/execution", \
+            ("ctrlexecstate", "cycle"), self.__rw["rapid"]["execution"])
 
     def get_rws_resource(self, resource, key):
         """get_rws_resource
@@ -121,13 +131,28 @@ class WebService(object):
                 url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
                 resp = self.__session.get(url, cookies=self.__cookies)
                 obj = json.loads(resp.text)
-                values[key] = obj["_embedded"]["_state"][0][key]
+                state_values = []
+                for state in obj["_embedded"]["_state"]:
+                    if key in state:
+                        state_values.append(state[key])
+                if len(state_values) == 1:
+                    values[key] = state_values[0]
+                else:
+                    values[key] = state_values
         else:
             url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resources)
             resp = self.__session.get(url, cookies=self.__cookies)
             obj = json.loads(resp.text)
             for key in keys:
-                values[key] = obj["_embedded"]["_state"][0][key]
+                #values[key] = obj["_embedded"]["_state"][0][key]
+                state_values = []
+                for state in obj["_embedded"]["_state"]:
+                    if key in state:
+                        state_values.append(state[key])
+                if len(state_values) == 1:
+                    values[key] = state_values[0]
+                else:
+                    values[key] = state_values
 
     def get_host(self):
         """RobotWebService
