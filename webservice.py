@@ -43,6 +43,7 @@ class WebService(object):
         root = ET.fromstring(resp.text)
         self.__ctrl = {}
         self.__rw = {}
+        self.__symboldata = {}
         if "system" not in self.__rw:
             self.__rw["system"] = {}
         if "panel" not in self.__rw:
@@ -51,6 +52,10 @@ class WebService(object):
             self.__rw["rapid"] = {}
         if "execution" not in self.__rw["rapid"]:
             self.__rw["rapid"]["execution"] = {}
+        if "T_ROB1" not in self.__symboldata:
+            self.__symboldata["T_ROB1"] = {}
+        if "user" not in self.__symboldata["T_ROB1"]:
+            self.__symboldata["T_ROB1"]["user"] = {}
 
         if root.findall(".//{0}li[@class='ctrl-identity-info-li']".format(self.__namespace)):
             self.__ctrl["name"] = root.find(
@@ -67,6 +72,7 @@ class WebService(object):
                     ".//{0}li[@class='ctrl-identity-info-li']/{0}span[@class='ctrl-id']"
                     .format(self.__namespace)).text
         self.refresh_rw()
+        self.refresh_data()
 
         self.__logger = WebService.get_logging()
         self.__logger.debug(self.__ctrl)
@@ -115,6 +121,12 @@ class WebService(object):
         self.refresh_rws_resources("rw/rapid/execution", \
             ("ctrlexecstate", "cycle"), self.__rw["rapid"]["execution"])
 
+    def refresh_data(self):
+        """refresh_symboldata
+        """
+        self.__symboldata["T_ROB1"]["user"][""] = self.get_rws_symbol_data(\
+            "T_ROB1", "user", "reg1")
+
     def get_rws_resource(self, resource, key):
         """get_rws_resource
         """
@@ -153,6 +165,16 @@ class WebService(object):
                     values[key] = state_values[0]
                 else:
                     values[key] = state_values
+
+
+    def get_rws_symbol_data(self, task, module, name):
+        """get_rws_symbol_data
+        """
+        url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
+            .format(self.__host, self.__port, task, module, name)
+        resp = self.__session.get(url, cookies=self.__cookies)
+        obj = json.loads(resp.text)
+        return obj["_embedded"]["_state"][0]["value"]
 
     def get_host(self):
         """RobotWebService
@@ -202,6 +224,12 @@ class WebService(object):
         """
         return self.__rw
 
+    def get_symboldata(self):
+        """RobotWebService
+
+        """
+        return self.__symboldata
+    
     def close_session(self):
         """RobotWebService
 
@@ -218,6 +246,7 @@ def main(argv):
         web_service = WebService(port=8610)
         print (web_service.get_ctrl())
         print (web_service.get_rw())
+        print (web_service.get_symboldata())
         web_service.close_session()
     except requests.ConnectionError:
         print ("ConnectionError")
