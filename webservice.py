@@ -124,8 +124,10 @@ class WebService(object):
     def refresh_data(self):
         """refresh_symboldata
         """
-        self.__symboldata["T_ROB1"]["user"][""] = self.get_rws_symbol_data(\
-            "T_ROB1", "user", "reg1")
+        self.__symboldata["T_ROB1"]["user"].update(self.get_rws_symbol_data(\
+            "T_ROB1", "user", "reg1"))
+        self.__symboldata["T_ROB1"]["user"].update(self.get_rws_symbol_data(\
+            "T_ROB1", "user", ("reg2", "reg3", "reg4", "reg5")))
 
     def get_rws_resource(self, resource, key):
         """get_rws_resource
@@ -167,14 +169,24 @@ class WebService(object):
                     values[key] = state_values
 
 
-    def get_rws_symbol_data(self, task, module, name):
+    def get_rws_symbol_data(self, task, module, names):
         """get_rws_symbol_data
         """
-        url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
-            .format(self.__host, self.__port, task, module, name)
-        resp = self.__session.get(url, cookies=self.__cookies)
-        obj = json.loads(resp.text)
-        return obj["_embedded"]["_state"][0]["value"]
+        sysbols = {}
+        if isinstance(names, tuple):
+            for name in names:
+                url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
+                    .format(self.__host, self.__port, task, module, name)
+                resp = self.__session.get(url, cookies=self.__cookies)
+                obj = json.loads(resp.text)
+                sysbols[name] = obj["_embedded"]["_state"][0]["value"]
+        else:
+            url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
+                .format(self.__host, self.__port, task, module, names)
+            resp = self.__session.get(url, cookies=self.__cookies)
+            obj = json.loads(resp.text)
+            sysbols[names] = obj["_embedded"]["_state"][0]["value"]
+        return sysbols
 
     def get_host(self):
         """RobotWebService
@@ -229,7 +241,7 @@ class WebService(object):
 
         """
         return self.__symboldata
-    
+
     def close_session(self):
         """RobotWebService
 
