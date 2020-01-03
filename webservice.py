@@ -7,11 +7,14 @@ chmod a+x we*
 """
 
 import sys
+import os
+#import signal
 import json
 import xml.etree.ElementTree as ET
 import logging
 from requests.auth import HTTPDigestAuth
 import requests
+import ucbbasic
 #from aprolpython.robotresource import RobotResource
 
 
@@ -249,6 +252,31 @@ class WebService(object):
         self.__session.close()
 
 
+######################################################################
+### Read inputs 8environment variables)
+######################################################################
+def read_inputs(inputs, outputs):
+    """read_input
+    """
+    if "input1" in os.environ:
+        inputs['input1'] = int(os.environ['input1'])
+    else:
+        inputs['input1'] = 0
+    if "LoopCnt" in os.environ:
+        outputs["LoopCnt"] = int(os.environ['LoopCnt']) # read variable
+    else:
+        outputs["LoopCnt"] = 0
+
+######################################################################
+### Check how often UCB-script was run
+######################################################################
+def write_outputs(outputs):
+    """write_outputs
+    """
+    for key in outputs:
+        print key + "=" + str(outputs[key]) # write variable
+
+
 def main(argv):
     """RobotWebService
 
@@ -263,6 +291,21 @@ def main(argv):
     except requests.ConnectionError:
         print ("ConnectionError")
 
+def test_main():
+    """test_main
+    """
+    ucbbasic.signal_handling()
+    INSTANZ = sys.argv[0]
+    INPUTS = {}
+    OUTPUTS = {}
+    ucbbasic.initialization_deinitialization()
+
+    read_inputs(INPUTS, OUTPUTS)
+    OUTPUTS["LoopCnt"] = OUTPUTS["LoopCnt"] + 1 # increment variable
+    OUTPUTS["output1"] = INPUTS["input1"]
+    write_outputs(OUTPUTS)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+else:
+    pass

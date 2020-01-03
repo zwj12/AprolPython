@@ -12,9 +12,6 @@ import signal
 import string
 
 
-######################################################################
-### Signal handling (caused e.g. by RuntimeSystem Download)
-######################################################################
 def on_term(signum, frame):
     """on_term
     """
@@ -25,10 +22,22 @@ def on_usr(signum, frame):
     """
     pass
 
-def ucb_basic():
-    """ucb_basic
+def signal_handling():
+    """signal_handling
     """
+    ######################################################################
+    ### Signal handling (caused e.g. by RuntimeSystem Download)
+    ######################################################################
+    signal.signal(signal.SIGTERM, on_term)
+    signal.signal(signal.SIGUSR2, on_usr)
+    signal.signal(signal.SIGUSR1, on_usr)
 
+def initialization_deinitialization():
+    """initialization_deinitialization
+    """
+    ######################################################################
+    ### Initialization phase (script called by UCB Server start)
+    ######################################################################
     if len(sys.argv) > 2 and sys.argv[2] == '-init':
         sys.exit(0)
 
@@ -68,18 +77,16 @@ def write_outputs(outputs):
     for key in outputs:
         print key + "=" + str(outputs[key]) # write variable
 
-signal.signal(signal.SIGTERM, on_term)
-signal.signal(signal.SIGUSR2, on_usr)
-signal.signal(signal.SIGUSR1, on_usr)
 
-######################################################################
-### Initialization phase (script called by UCB Server start)
-######################################################################
-INSTANZ = sys.argv[0]
-INPUTS = {}
-OUTPUTS = {}
+if __name__ == "__main__":
+    signal_handling()
 
-ucb_basic()
-read_inputs(INPUTS)
-OUTPUTS.update(INPUTS)
-write_outputs(OUTPUTS)
+    INSTANZ = sys.argv[0]
+    INPUTS = {}
+    OUTPUTS = {}
+
+    initialization_deinitialization()
+
+    read_inputs(INPUTS)
+    OUTPUTS.update(INPUTS)
+    write_outputs(OUTPUTS)
