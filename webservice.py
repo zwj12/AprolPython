@@ -51,6 +51,10 @@ class WebService(object):
             self.__rw["system"] = {}
         if "panel" not in self.__rw:
             self.__rw["panel"] = {}
+        if "iosystem" not in self.__rw:
+            self.__rw["iosystem"] = {}
+        if "signals" not in self.__rw["iosystem"]:
+            self.__rw["iosystem"]["signals"] = {}
         if "rapid" not in self.__rw:
             self.__rw["rapid"] = {}
         if "execution" not in self.__rw["rapid"]:
@@ -123,6 +127,7 @@ class WebService(object):
             self.__rw["panel"])
         self.refresh_rws_resources("rw/rapid/execution", \
             ("ctrlexecstate", "cycle"), self.__rw["rapid"]["execution"])
+        self.refresh_signals(self.__rw["iosystem"]["signals"])
 
     def refresh_data(self):
         """refresh_symboldata
@@ -131,6 +136,20 @@ class WebService(object):
             "T_ROB1", "user", "reg1"))
         self.__symboldata["T_ROB1"]["user"].update(self.get_rws_symbol_data(\
             "T_ROB1", "user", ("reg2", "reg3", "reg4", "reg5")))
+
+    def refresh_signals(self, signals):
+        """refresh_signals
+        """
+        url = "http://{0}:{1}/rw/iosystem/signals?json=1".format(self.__host, self.__port)
+        resp = self.__session.get(url, cookies=self.__cookies)
+        obj = json.loads(resp.text)
+        for state in obj["_embedded"]["_state"]:
+            #signals[state["name"]] = {}
+            #signals[state["name"]]["name"] = state["name"]
+            #signals[state["name"]]["type"] = state["type"]
+            #signals[state["name"]]["lvalue"] = state["lvalue"]
+            signals[state["name"]] = state
+
 
     def get_rws_resource(self, resource, key):
         """get_rws_resource
