@@ -57,7 +57,7 @@ def initialization_deinitialization():
         sys.exit(0)
 
 ######################################################################
-### Read inputs 8environment variables)
+### Read inputs by environment variables)
 ######################################################################
 def read_inputs(inputs):
     """read_input
@@ -75,7 +75,7 @@ def write_outputs(outputs):
     #LoopCnt = int(os.environ['LoopCnt']) # read variable
     #LoopCnt = LoopCnt + 1 # increment variable
     for key in outputs:
-        print key + "=" + str(outputs[key]) # write variable
+        print (key + "=" + str(outputs[key])) # write variable
 
 
 if __name__ == "__main__":

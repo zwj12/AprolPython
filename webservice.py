@@ -65,17 +65,14 @@ class WebService(object):
             self.__symboldata["T_ROB1"]["user"] = {}
 
         if root.findall(".//{0}li[@class='ctrl-identity-info-li']".format(self.__namespace)):
-            self.__ctrl["name"] = root.find(
+            self.__ctrl["ctrl-name"] = root.find(
                 ".//{0}li[@class='ctrl-identity-info-li']/{0}span[@class='ctrl-name']"
                 .format(self.__namespace)).text
-            controller_type = root.find(
+            self.__ctrl["ctrl-type"] = root.find(
                 ".//{0}li[@class='ctrl-identity-info-li']/{0}span[@class='ctrl-type']"
                 .format(self.__namespace)).text
-            if controller_type == "Virtual Controller":
-                self.__ctrl["type"] = True
-            elif controller_type == "Real Controller":
-                self.__ctrl["type"] = False
-                self.__ctrl["id"] = root.find(
+            if self.__ctrl["ctrl-type"] == "Real Controller":
+                self.__ctrl["ctrl-id"] = root.find(
                     ".//{0}li[@class='ctrl-identity-info-li']/{0}span[@class='ctrl-id']"
                     .format(self.__namespace)).text
         self.refresh_rw()
@@ -272,7 +269,7 @@ class WebService(object):
 
 
 ######################################################################
-### Read inputs 8environment variables)
+### Read inputs by environment variables)
 ######################################################################
 def read_inputs(inputs, outputs):
     """read_input
@@ -293,7 +290,7 @@ def write_outputs(outputs):
     """write_outputs
     """
     for key in outputs:
-        print key + "=" + str(outputs[key]) # write variable
+        print (key + "=" + str(outputs[key])) # write variable
 
 
 def main(argv):
@@ -305,6 +302,7 @@ def main(argv):
         web_service = WebService(port=8610)
         print (web_service.get_ctrl())
         print (web_service.get_rw())
+        print (web_service.get_rw()["system"])
         print (web_service.get_symboldata())
         web_service.close_session()
     except requests.ConnectionError:

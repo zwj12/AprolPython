@@ -1,0 +1,454 @@
+// Typ:		OT\L\B\UCB
+// Date:	01/05/2020 18:46:16 CST
+// User:	michael
+// System:	engin@aprol01
+// Release:	R 4.2-05
+// Context:	L\L/ABB\B/PollbyRWS
+
+// Attention:
+// The 'tb_structure' attribute must not be manipulated manually!
+
+
+// Typ:		OT\L\GRP
+// Date:	01/05/2020 18:46:16 CST
+// User:	michael
+// System:	engin@aprol01
+// Release:	R 4.2-05
+// Context:	L\L/ABB\G/Robotics
+
+// Attention:
+// The 'tb_structure' attribute must not be manipulated manually!
+
+
+\L\L/ABB\B/PollbyRWS  (
+   active = \L\L/ABB\B/PollbyRWS\V0.0.19 ,
+   active_time = 05.01.2020 18:41:12.342 ,
+   active_user = "michael" ,
+   active_user_full = "" ,
+   ctime = 04.01.2020 20:18:58.344 ,
+   current = \L\L/ABB\B/PollbyRWS\V0.0.19 ,
+   desc001 = "" ,
+   ext_imported = \OT\F\EXT_IMPORTED ,
+   group = \L\L/ABB\G/Robotics ,
+   imported_time = (Vt_NOW) 05.01.2020 18:46:16.000 ,
+   imported_user = "michael" ,
+   imported_user_full = "zhu, michael" ,
+   library_internal = False ,
+   mtime = 05.01.2020 18:41:12.349 ,
+   muser = "michael" ,
+   muser_full = "zhu, michael" ,
+   otref = \OT\L\B\UCB ,
+   tb_structure = "R 3.5-247" ,
+   user = "michael" ,
+   user_full = "zhu, michael" ,
+)
+
+\L\L/ABB\B/PollbyRWS\Compile  (
+   compile_time = 05.01.2020 18:41:58.528 ,
+   compile_user = "michael" ,
+   compile_user_full = "zhu, michael" ,
+   compiled = \L\L/ABB\B/PollbyRWS\V0.0.19 ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19  (
+   active_save = (Vt_OPAQUE)"active" ,
+   crelease = "R 4.2-05" ,
+   height = 16 ,
+   is_not_iec_conform ,
+   lock_instances ,
+   mtime = 05.01.2020 18:40:53.685 ,
+   muser = "michael" ,
+   muser_full = "zhu, michael" ,
+   no_exec_on_slave ,
+   not_supported = False ,
+   orig = "V0.0.18" ,
+   page_comm = nil ,
+   red_capable = "yes" ,
+   usage = "<LIBRARIES>,<PROJECTS>" ,
+   use_for_lr = True ,
+   use_for_rps = False ,
+   user = "michael" ,
+   user_full = "zhu, michael" ,
+   vers_comm = "" ,
+   width = 16 ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\C-CODE  (
+   source = "#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+sys.path.append('/home/engin/source/repos/aprolpython')
+import ucbbasic
+import webservice
+
+
+######################################################################
+### Read inputs by environment variables)
+######################################################################
+def read_inputs(inputs, outputs):
+    """"""read_input
+    """"""
+    inputs['RobotIP'] = os.environ['RobotIP']
+    inputs['RWSPort'] = int(os.environ['RWSPort'])
+    inputs['UserName'] = os.environ['UserName']
+    inputs['Password'] = os.environ['Password']
+
+######################################################################
+### Check how often UCB-script was run
+######################################################################
+def write_outputs(outputs):
+    """"""write_outputs
+    """"""
+    for key in outputs:
+        print key + ""="" + str(outputs[key]) # write variable
+
+
+ucbbasic.signal_handling()
+INSTANZ = sys.argv[0]
+INPUTS = {}
+OUTPUTS = {}
+ucbbasic.initialization_deinitialization()
+
+read_inputs(INPUTS, OUTPUTS)
+
+""""""
+WS = webservice.WebService(
+    host=INPUTS['RobotIP'],
+    port=INPUTS['RWSPort'],
+    username=INPUTS['UserName'],
+""""""
+WS = webservice.WebService(port=8610)
+
+WS.close_session()
+OUTPUTS[""CtrlName""] = WS.get_ctrl()[""ctrl-name""]
+
+if WS.get_ctrl()[""ctrl-type""] == ""Real Controller"":
+    OUTPUTS[""Virtual""] = 0
+    OUTPUTS[""CtrlID""] = WS.get_ctrl()[""ctrl-id""]
+else:
+    OUTPUTS[""Virtual""] = 1
+    OUTPUTS[""CtrlID""] = """"
+
+OUTPUTS[""RobotType""] = WS.get_rw()[""system""][""robot-type""]
+OUTPUTS[""SysName""] = WS.get_rw()[""system""][""name""]
+OUTPUTS[""RWVersion""] = WS.get_rw()[""system""][""rwversion""]
+OUTPUTS[""SysID""] = WS.get_rw()[""system""][""sysid""]
+OUTPUTS[""StartTime""] = WS.get_rw()[""system""][""starttm""]
+
+if WS.get_rw()[""rapid""][""execution""][""ctrlexecstate""] == ""stopped"":
+    OUTPUTS[""CtrlExecstate""] = 0
+else:
+    OUTPUTS[""CtrlExecstate""] = 1
+
+OUTPUTS[""Cycle""] = WS.get_rw()[""rapid""][""execution""][""cycle""]
+OUTPUTS[""OpMode""] = WS.get_rw()[""panel""][""opmode""]
+OUTPUTS[""SpeedRatio""] = int(WS.get_rw()[""panel""][""speedratio""])
+
+if WS.get_rw()[""panel""][""ctrlstate""] == ""motoron"":
+    OUTPUTS[""CtrlState""] = 1
+else:
+    OUTPUTS[""CtrlState""] = 0
+
+write_outputs(OUTPUTS)" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\DOC  ( )
+\L\L/ABB\B/PollbyRWS\V0.0.19\DOC\Images  ( )
+\L\L/ABB\B/PollbyRWS\V0.0.19\DOC\Links  ( )
+\L\L/ABB\B/PollbyRWS\V0.0.19\I/Password  (
+   category = "BASIC" ,
+   dflt = "robotics" ,
+   dimension = nil ,
+   name = "Password" ,
+   pin = 4 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = True ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\I/RWSPort  (
+   category = "BASIC" ,
+   dflt = "8610" ,
+   dimension = nil ,
+   name = "RWSPort" ,
+   pin = 2 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "INT" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\I/RobotIP  (
+   category = "BASIC" ,
+   dflt = "10.0.2.2" ,
+   dimension = nil ,
+   name = "RobotIP" ,
+   pin = 1 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = True ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\I/UcbTrigger  (
+   category = "BASIC" ,
+   connection_required ,
+   desc001 = "Trigger signal for UcbServer" ,
+   dimension = nil ,
+   name = "UcbTrigger" ,
+   pin = 0 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   system_pin ,
+   translatable = False ,
+   type = "BOOL" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\I/UserName  (
+   category = "BASIC" ,
+   dflt = "Default User" ,
+   dimension = nil ,
+   name = "UserName" ,
+   pin = 3 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = True ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/CtrlExecstate  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "CtrlExecstate" ,
+   pin = 8 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "BOOL" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/CtrlID  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "CtrlID" ,
+   pin = 3 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/CtrlName  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "CtrlName" ,
+   pin = 1 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/CtrlState  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "CtrlState" ,
+   pin = 13 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "BOOL" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/Cycle  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "Cycle" ,
+   pin = 9 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/LoopCnt  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "LoopCnt" ,
+   pin = 14 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "DINT" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/OpMode  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "OpMode" ,
+   pin = 11 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/RWVersion  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "RWVersion" ,
+   pin = 6 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/RobotType  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "RobotType" ,
+   pin = 4 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/SpeedRatio  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "SpeedRatio" ,
+   pin = 12 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "INT" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/StartTime  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "StartTime" ,
+   pin = 10 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/SysID  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "SysID" ,
+   pin = 7 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/SysName  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "SysName" ,
+   pin = 5 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "SSTRING" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/UcbStatus  (
+   category = "BASIC" ,
+   desc001 = "Return value of UcbServer" ,
+   dimension = nil ,
+   name = "UcbStatus" ,
+   not_dynamic ,
+   pin = 0 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   system_pin ,
+   translatable = False ,
+   type = "INT" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/Virtual  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "Virtual" ,
+   pin = 2 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "BOOL" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\O/o_reg1  (
+   category = "BASIC" ,
+   dimension = nil ,
+   name = "o_reg1" ,
+   pin = 15 ,
+   remanent = False ,
+   replicate = False ,
+   require_empty_default = False ,
+   translatable = False ,
+   type = "DINT" ,
+   unit = "" ,
+)
+
+\L\L/ABB\B/PollbyRWS\V0.0.19\SIZES/cc  (
+   rem_size = 0 ,
+   rem_undef_counter = 0 ,
+   vol_size = 798 ,
+   vol_undef_counter = 0 ,
+)
+
+\L\L/ABB\G/Robotics  (
+   ctime = 04.01.2020 20:12:47.261 ,
+   desc001 = "" ,
+   mtime = 05.01.2020 18:41:12.349 ,
+   muser = "michael" ,
+   muser_full = "zhu, michael" ,
+   user = "michael" ,
+   user_full = "zhu, michael" ,
+)
+
