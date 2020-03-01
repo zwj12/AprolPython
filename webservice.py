@@ -32,16 +32,17 @@ class WebService(object):
     #__ctrl = {}
     #__rw = {}
 
-    def __init__(self, host="10.0.2.2", port=80, username="Default User", password="robotics"):
+    def __init__(self, host="10.0.2.2", port=80, username="Default User", password="robotics", timeout=0.5):
         """Create Session and get the robot's overview information
         """
         self.__host = host
         self.__port = port
+        self.__tmeout = timeout
         self.__session = requests.Session()
         digest_auth = HTTPDigestAuth(username, password)
         # by xml format data
         url = "http://{0}:{1}/ctrl".format(self.__host, self.__port)
-        resp = self.__session.get(url, auth=digest_auth)
+        resp = self.__session.get(url, auth=digest_auth, timeout=self.__tmeout)
         self.__cookies = resp.cookies
         root = ET.fromstring(resp.text)
         self.__ctrl = {}
@@ -292,21 +293,25 @@ def write_outputs(outputs):
     for key in outputs:
         print (key + "=" + str(outputs[key])) # write variable
 
-
 def main(argv):
     """RobotWebService
 
     """
     print (argv)
     try:
-        web_service = WebService(port=8610)
+        web_service = WebService(host="192.168.2.51", port=8610, timeout=0.5)
+        #web_service = WebService(port=8610, timeout=0.001)
         print (web_service.get_ctrl())
         print (web_service.get_rw())
         print (web_service.get_rw()["system"])
         print (web_service.get_symboldata())
         web_service.close_session()
+    except requests.RequestException, e:
+        print (e)
     except requests.ConnectionError:
         print ("ConnectionError")
+    except requests.Timeout:
+        print ("TimeoutError")
 
 def test_main():
     """test_main
