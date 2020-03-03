@@ -7,24 +7,43 @@ chmod a+x we*
 """
 
 import sys
-import os
-#import signal
 import json
 import xml.etree.ElementTree as ET
-import logging
 from requests.auth import HTTPDigestAuth
 import requests
-import ucbbasic
-#from aprolpython.robotresource import RobotResource
 
 
-class WebService(object):
+class RobotWebService(object):
     """RobotWebService
-
+    The subset of RobotWebService is similar of web services resources
+    which is described at http://developercenter.robotstudio.com/webservice/api_reference
+    |___rw
+        |___rapid
+            |___execution
+        |___iosystem
+            |___signals
+        |___system
+            |___option
+            |___robot-type
+            |___sysid
+            |___starttm
+            |___rwversion
+            |___name
+        |___panel
+            |___speedratio
+            |___opmode
+            |___ctrlstate
+    |___symboldata
+        |___T_ROB1
+            |___user
+    |___ctrl
+        |___ctrl-name
+        |___ctrl-type
     """
     __namespace = '{http://www.w3.org/1999/xhtml}'
     #__host = "10.0.2.2"
     #__port = 80
+    #__timeout = 0.5
     #__username = "Default User"
     #__password = "robotics"
     #__session = None
@@ -35,9 +54,13 @@ class WebService(object):
     def __init__(self, host="10.0.2.2", port=80, username="Default User", password="robotics", timeout=0.5):
         """Create Session and get the robot's overview information
         """
+        self.init_data_structure()
         self.__host = host
         self.__port = port
-        self.__timeout = timeout
+        if timeout < 0.1:
+            self.__timeout = 0.5
+        else:
+            self.__timeout = timeout
         self.__session = requests.Session()
         digest_auth = HTTPDigestAuth(username, password)
         # by xml format data
@@ -45,26 +68,6 @@ class WebService(object):
         resp = self.__session.get(url, auth=digest_auth, timeout=self.__timeout)
         self.__cookies = resp.cookies
         root = ET.fromstring(resp.text)
-        self.__ctrl = {}
-        self.__rw = {}
-        self.__symboldata = {}
-        if "system" not in self.__rw:
-            self.__rw["system"] = {}
-        if "panel" not in self.__rw:
-            self.__rw["panel"] = {}
-        if "iosystem" not in self.__rw:
-            self.__rw["iosystem"] = {}
-        if "signals" not in self.__rw["iosystem"]:
-            self.__rw["iosystem"]["signals"] = {}
-        if "rapid" not in self.__rw:
-            self.__rw["rapid"] = {}
-        if "execution" not in self.__rw["rapid"]:
-            self.__rw["rapid"]["execution"] = {}
-        if "T_ROB1" not in self.__symboldata:
-            self.__symboldata["T_ROB1"] = {}
-        if "user" not in self.__symboldata["T_ROB1"]:
-            self.__symboldata["T_ROB1"]["user"] = {}
-
         if root.findall(".//{0}li[@class='ctrl-identity-info-li']".format(self.__namespace)):
             self.__ctrl["ctrl-name"] = root.find(
                 ".//{0}li[@class='ctrl-identity-info-li']/{0}span[@class='ctrl-name']"
@@ -79,23 +82,20 @@ class WebService(object):
         self.refresh_rw()
         self.refresh_data()
 
-        self.__logger = WebService.get_logging()
-        self.__logger.debug(self.__ctrl)
-        self.__logger.debug(self.__rw)
-
-    @staticmethod
-    def get_logging():
-        """get_logging
-
+    def init_data_structure(self):
+        """init_data_structure
+        df
         """
-        logger = logging.getLogger('WebService')
-        logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s')
-        filehandler = logging.FileHandler(
-            '/home/engin/source/repos/aprolpython/robotwebservice.log')
-        filehandler.setFormatter(formatter)
-        logger.addHandler(filehandler)
-        return logger
+        self.__ctrl = {}
+        self.__rw = {"system":{}, "panel":{}, "iosystem":{}, "rapid":{}}
+        self.__rw["iosystem"] = {"signals":{}}
+        self.__rw["rapid"] = {"execution":{}}
+        self.__symboldata = {"T_ROB1":{}}
+        self.__symboldata["T_ROB1"] = {"user":{}}
+        self.__root = {}
+        self.__root["ctrl"] = self.__ctrl
+        self.__root["rw"] = self.__rw
+        self.__root["symboldata"] = self.__symboldata
 
     def refresh_rw(self):
         """
@@ -103,7 +103,7 @@ class WebService(object):
         """
         # For json format data
         #url = "http://{0}:{1}/rw/system?json=1".format(self.__host, self.__port)
-        #resp = self.__session.get(url, cookies=self.__cookies)
+        #resp = self.__session.get(url, cookies=self.__cookies, timeout=self.__timeout)
         #obj = json.loads(resp.text)
         #self.__rw["system_name"] = obj["_embedded"]["_state"][0]["name"]
         #self.__rw["rw_version"] = obj["_embedded"]["_state"][0]["rwversion"]
@@ -139,7 +139,7 @@ class WebService(object):
         """refresh_signals
         """
         url = "http://{0}:{1}/rw/iosystem/signals?json=1".format(self.__host, self.__port)
-        resp = self.__session.get(url, cookies=self.__cookies)
+        resp = self.__session.get(url, cookies=self.__cookies, timeout=self.__timeout)
         obj = json.loads(resp.text)
         for state in obj["_embedded"]["_state"]:
             #signals[state["name"]] = {}
@@ -148,12 +148,11 @@ class WebService(object):
             #signals[state["name"]]["lvalue"] = state["lvalue"]
             signals[state["name"]] = state
 
-
     def get_rws_resource(self, resource, key):
         """get_rws_resource
         """
         url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
-        resp = self.__session.get(url, cookies=self.__cookies)
+        resp = self.__session.get(url, cookies=self.__cookies, timeout=self.__timeout)
         obj = json.loads(resp.text)
         return obj["_embedded"]["_state"][0][key]
 
@@ -163,7 +162,7 @@ class WebService(object):
         if isinstance(resources, tuple):
             for resource, key in zip(resources, keys):
                 url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
-                resp = self.__session.get(url, cookies=self.__cookies)
+                resp = self.__session.get(url, cookies=self.__cookies, timeout=self.__timeout)
                 obj = json.loads(resp.text)
                 state_values = []
                 for state in obj["_embedded"]["_state"]:
@@ -175,7 +174,7 @@ class WebService(object):
                     values[key] = state_values
         else:
             url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resources)
-            resp = self.__session.get(url, cookies=self.__cookies)
+            resp = self.__session.get(url, cookies=self.__cookies, timeout=self.__timeout)
             obj = json.loads(resp.text)
             for key in keys:
                 #values[key] = obj["_embedded"]["_state"][0][key]
@@ -188,7 +187,6 @@ class WebService(object):
                 else:
                     values[key] = state_values
 
-
     def get_rws_symbol_data(self, task, module, names):
         """get_rws_symbol_data
         """
@@ -197,13 +195,13 @@ class WebService(object):
             for name in names:
                 url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
                     .format(self.__host, self.__port, task, module, name)
-                resp = self.__session.get(url, cookies=self.__cookies)
+                resp = self.__session.get(url, cookies=self.__cookies, timeout=self.__timeout)
                 obj = json.loads(resp.text)
                 sysbols[name] = obj["_embedded"]["_state"][0]["value"]
         else:
             url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
                 .format(self.__host, self.__port, task, module, names)
-            resp = self.__session.get(url, cookies=self.__cookies)
+            resp = self.__session.get(url, cookies=self.__cookies, timeout=self.__timeout)
             obj = json.loads(resp.text)
             sysbols[names] = obj["_embedded"]["_state"][0]["value"]
         return sysbols
@@ -244,6 +242,12 @@ class WebService(object):
         else:
             return self.__cookies
 
+    def get_root(self):
+        """RobotWebService
+
+        """
+        return self.__root
+
     def get_ctrl(self):
         """RobotWebService
 
@@ -268,30 +272,18 @@ class WebService(object):
         """
         self.__session.close()
 
+    def show_tree(self, vars, layer, max_layer=3):
+        """RobotWebService
 
-######################################################################
-### Read inputs by environment variables)
-######################################################################
-def read_inputs(inputs, outputs):
-    """read_input
-    """
-    if "input1" in os.environ:
-        inputs['input1'] = int(os.environ['input1'])
-    else:
-        inputs['input1'] = 0
-    if "LoopCnt" in os.environ:
-        outputs["LoopCnt"] = int(os.environ['LoopCnt']) # read variable
-    else:
-        outputs["LoopCnt"] = 0
+        """
+        if isinstance(vars, dict):
+            for key, value in vars.items():
+                if layer==1:
+                    print ("|___" + key)
+                elif layer<=max_layer:
+                    print ("    "* (layer-1) + "|___"  + key)
+                self.show_tree(value, layer+1, max_layer)
 
-######################################################################
-### Check how often UCB-script was run
-######################################################################
-def write_outputs(outputs):
-    """write_outputs
-    """
-    for key in outputs:
-        print (key + "=" + str(outputs[key])) # write variable
 
 def main(argv):
     """RobotWebService
@@ -299,33 +291,25 @@ def main(argv):
     """
     print (argv)
     try:
-        web_service = WebService(host="192.168.2.52", port=8610, timeout=0.5)
+        web_service = RobotWebService(host="10.0.2.2", port=8610, timeout=1)
         #web_service = WebService(port=8610, timeout=0.001)
         print (web_service.get_ctrl())
-        print (web_service.get_rw())
-        print (web_service.get_rw()["system"])
-        print (web_service.get_symboldata())
+        #lists = {"one1":{}, "one2":{"two1":{},"two2":{}}, "one3":{"two1":{"three1":{},"three2":{}},"two2":{}}}
+        web_service.show_tree(web_service.get_root(), 1)
+        #print (web_service.get_rw())
+        #print (web_service.get_rw()["system"])
+        #print (web_service.get_symboldata())
         web_service.close_session()
-    except requests.RequestException, e:
-        print (e)
     except requests.ConnectionError:
         print ("ConnectionError")
     except requests.Timeout:
         print ("TimeoutError")
-
-def test_main():
-    """test_main
-    """
-    ucbbasic.signal_handling()
-    INSTANZ = sys.argv[0]
-    INPUTS = {}
-    OUTPUTS = {}
-    ucbbasic.initialization_deinitialization()
-
-    read_inputs(INPUTS, OUTPUTS)
-    OUTPUTS["LoopCnt"] = OUTPUTS["LoopCnt"] + 1 # increment variable
-    OUTPUTS["output1"] = INPUTS["input1"]
-    write_outputs(OUTPUTS)
+    except requests.RequestException, var:
+        print (var)
+    #except Exception, var:
+        #print (var)
+#    finally:
+#       web_service.close_session()
 
 if __name__ == "__main__":
     main(sys.argv[1:])

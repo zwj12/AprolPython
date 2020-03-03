@@ -9,7 +9,7 @@ chmod a+x uc*
 import os
 import sys
 import signal
-import string
+#import string
 
 
 def on_term(signum, frame):
@@ -50,7 +50,7 @@ def initialization_deinitialization():
         ######################################################################
         if len(sys.argv) > 3 and sys.argv[3] == '-forced':
             if len(sys.argv) > 4:
-                list_of_terminated_instances = string.split(sys.argv[4], ',')
+                list_of_terminated_instances = sys.argv[4].split(',')
                 for inst in list_of_terminated_instances:
                     # cleanup actions for terminated instances possible here
                     pass
