@@ -69,35 +69,13 @@ class RobotWebService(object):
             self.load_cookies()
             # by xml format data
             url = "http://{0}:{1}/ctrl".format(self.__host, self.__port)
-            print url
-            print self.__session.cookies
-            if self.__session.cookies is None:
-                print "No cookies file"
+            resp = self.__session.get(url, timeout=self.__timeout)
+            if resp.status_code==401:
+                self.__session.cookies = requests.cookies.RequestsCookieJar()
                 resp = self.__session.get(url, auth=self.__digest_auth, timeout=self.__timeout)
-                self.__session.cookies = resp.cookies
-                self.save_cookies()
-            else:
-                mycookies = requests.utils.dict_from_cookiejar(self.__session.cookies)
-                self.__session.cookies.clear()
-                print mycookies
-                print self.__session.cookies
-                resp = self.__session.get(url, cookies=mycookies, timeout=self.__timeout)
-                print self.__session.cookies
-                print self.__session.cookies.get_policy()
-                print "By cookies file: " + str(resp.status_code)
-                if resp.status_code==401:
-                    resp = self.__session.get(url, auth=self.__digest_auth, timeout=self.__timeout)
-                    self.__session.cookies = resp.cookies
+                if resp.status_code == 200:
                     self.save_cookies()
-            print "Authorized: " + str(resp.status_code)
-            print self.__session.cookies
-            self.load_cookies()
-            print self.__session.cookies
-            print resp.headers
-            if resp.status_code == 503:
-                self.__session = None
-                print ("Service Unavailable:" + resp.text)
-            else:
+            if resp.status_code == 200:
                 xml_response = ET.fromstring(resp.text)
                 if xml_response.findall(".//{0}li[@class='ctrl-identity-info-li']".format(self.__namespace)):
                     self.__root["ctrl"]["ctrl-name"] = xml_response.find(
@@ -110,10 +88,9 @@ class RobotWebService(object):
                         self.__root["ctrl"]["ctrl-id"] = xml_response.find(
                             ".//{0}li[@class='ctrl-identity-info-li']/{0}span[@class='ctrl-id']"
                             .format(self.__namespace)).text
-                print ("Session is created")
-            return self.__session
-        else:
-            return self.__session
+            else:
+                raise Exception("status_code: " + str(resp.status_code))
+        return self.__session
 
     def close_session(self):
         """RobotWebService
@@ -123,46 +100,54 @@ class RobotWebService(object):
             self.__session.close()
 
     def save_cookies(self):
-        cookies_dict = requests.utils.dict_from_cookiejar(self.__session.cookies)
+        """save_cookies
+
+        """
         lwpCookieJar = cookielib.LWPCookieJar(filename="robot_" + self.__host + ".txt")
-        lwpCookieJar = requests.utils.cookiejar_from_dict(cookies_dict, cookiejar=lwpCookieJar, overwrite=True)
+        for cookie in self.__session.cookies:
+            lwpCookieJar.set_cookie(cookie)
         lwpCookieJar.save(ignore_discard=True)
 
     def load_cookies(self):
+        """load_cookies
+
+        """
         try:
             lwpCookieJar = cookielib.LWPCookieJar(filename="robot_" + self.__host + ".txt")
             lwpCookieJar.load(ignore_discard=True)
-            cookies_dict = requests.utils.dict_from_cookiejar(lwpCookieJar)
-            self.__session.cookies = requests.utils.cookiejar_from_dict(cookies_dict, cookiejar=None, overwrite=True)
+            #requestsCookieJar = requests.cookies.RequestsCookieJar()
+            for cookie in lwpCookieJar:
+                #requestsCookieJar.set(name=cookie.name, value=cookie.value, domain=".10.0.2.2")
+                self.__session.cookies.set_cookie(cookie)
         except IOError:
-            self.__session.cookies = None
+            pass
 
     def refresh_priority_low(self):
-        self.__session = self.get_session()
-        if self.__session is not None:
+        try:
             self.refresh_rws_resources("rw/system", \
                 ("name", "sysid", "rwversion", "starttm"), \
                 self.__root["rw"]["system"])
             self.refresh_rws_resources("rw/system/robottype", ("robot-type",), self.__root["rw"]["system"])
             self.refresh_rws_resources("rw/system/options", ("option",), self.__root["rw"]["system"])
             return True
-        else:
+        except Exception:
+            self.__session = None
             return False
 
     def refresh_priority_medium(self):
-        self.__session = self.get_session()
-        if self.__session is not None:
+        try:
             self.__root["symboldata"]["T_ROB1"]["user"].update(self.get_rws_symbol_data(\
                 "T_ROB1", "user", "reg1"))
             self.__root["symboldata"]["T_ROB1"]["user"].update(self.get_rws_symbol_data(\
                 "T_ROB1", "user", ("reg2", "reg3", "reg4", "reg5")))
             return True
-        else:
+        except Exception, var:
+            self.__session = None
+            print var
             return False
 
     def refresh_priority_high(self):
-        self.__session = self.get_session()
-        if self.__session is not None:
+        try:
             self.refresh_rws_resources(\
                 ("rw/panel/ctrlstate", "rw/panel/opmode", "rw/panel/speedratio"), \
                 ("ctrlstate", "opmode", "speedratio"), \
@@ -171,83 +156,102 @@ class RobotWebService(object):
                 ("ctrlexecstate", "cycle"), self.__root["rw"]["rapid"]["execution"])
             self.refresh_signals(self.__root["rw"]["iosystem"]["signals"])
             return True
-        else:
+        except Exception:
+            self.__session = None
             return False
 
     def refresh_signals(self, signals):
         """refresh_signals
         """
+        self.get_session()
         url = "http://{0}:{1}/rw/iosystem/signals?json=1".format(self.__host, self.__port)
         resp = self.__session.get(url, timeout=self.__timeout)
-        obj = json.loads(resp.text)
-        for state in obj["_embedded"]["_state"]:
-            #signals[state["name"]] = {}
-            #signals[state["name"]]["name"] = state["name"]
-            #signals[state["name"]]["type"] = state["type"]
-            #signals[state["name"]]["lvalue"] = state["lvalue"]
-            signals[state["name"]] = state
+        if resp.status_code==200:
+            obj = json.loads(resp.text)
+            for state in obj["_embedded"]["_state"]:
+                #signals[state["name"]] = {}
+                #signals[state["name"]]["name"] = state["name"]
+                #signals[state["name"]]["type"] = state["type"]
+                #signals[state["name"]]["lvalue"] = state["lvalue"]
+                signals[state["name"]] = state
+        else:
+            raise Exception("status_code: " + str(resp.status_code))
 
     def refresh_rws_resources(self, resources, keys, values):
         """refresh_rws_resources
         """
+        self.get_session()
         if isinstance(resources, tuple):
             for resource, key in zip(resources, keys):
                 url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
                 resp = self.__session.get(url, timeout=self.__timeout)
-                obj = json.loads(resp.text)
-                state_values = []
-                for state in obj["_embedded"]["_state"]:
-                    if key in state:
-                        state_values.append(state[key])
-                if len(state_values) == 1:
-                    values[key] = state_values[0]
+                if resp.status_code==200:
+                    obj = json.loads(resp.text)
+                    state_values = []
+                    for state in obj["_embedded"]["_state"]:
+                        if key in state:
+                            state_values.append(state[key])
+                    if len(state_values) == 1:
+                        values[key] = state_values[0]
+                    else:
+                        values[key] = state_values
                 else:
-                    values[key] = state_values
+                    raise Exception("status_code: " + str(resp.status_code))
         else:
             url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resources)
             resp = self.__session.get(url, timeout=self.__timeout)
-            obj = json.loads(resp.text)
-            for key in keys:
-                #values[key] = obj["_embedded"]["_state"][0][key]
-                state_values = []
-                for state in obj["_embedded"]["_state"]:
-                    if key in state:
-                        state_values.append(state[key])
-                if len(state_values) == 1:
-                    values[key] = state_values[0]
-                else:
-                    values[key] = state_values
+            if resp.status_code==200:
+                obj = json.loads(resp.text)
+                for key in keys:
+                    #values[key] = obj["_embedded"]["_state"][0][key]
+                    state_values = []
+                    for state in obj["_embedded"]["_state"]:
+                        if key in state:
+                            state_values.append(state[key])
+                    if len(state_values) == 1:
+                        values[key] = state_values[0]
+                    else:
+                        values[key] = state_values
+            else:
+                raise Exception("status_code: " + str(resp.status_code))
 
     def get_rws_symbol_data(self, task, module, names):
         """get_rws_symbol_data
         """
+        self.get_session()
         sysbols = {}
         if isinstance(names, tuple):
             for name in names:
                 url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
                     .format(self.__host, self.__port, task, module, name)
                 resp = self.__session.get(url, timeout=self.__timeout)
-                obj = json.loads(resp.text)
-                sysbols[name] = obj["_embedded"]["_state"][0]["value"]
+                if resp.status_code==200:
+                    obj = json.loads(resp.text)
+                    sysbols[name] = obj["_embedded"]["_state"][0]["value"]
+                else:
+                    raise Exception("status_code: " + str(resp.status_code))
         else:
             url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
                 .format(self.__host, self.__port, task, module, names)
             resp = self.__session.get(url, timeout=self.__timeout)
-            print self.__session.cookies
-            print self.__session.cookies.items()
-            print resp.status_code
-            print resp.text
-            obj = json.loads(resp.text)
-            sysbols[names] = obj["_embedded"]["_state"][0]["value"]
+            if resp.status_code==200:
+                obj = json.loads(resp.text)
+                sysbols[names] = obj["_embedded"]["_state"][0]["value"]
+            else:
+                raise Exception("status_code: " + str(resp.status_code))
         return sysbols
 
     def get_rws_resource(self, resource, key):
         """get_rws_resource
         """
+        self.get_session()
         url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
         resp = self.__session.get(url, timeout=self.__timeout)
-        obj = json.loads(resp.text)
-        return obj["_embedded"]["_state"][0][key]
+        if resp.status_code==200:
+            obj = json.loads(resp.text)
+            return obj["_embedded"]["_state"][0][key]
+        else:
+            raise Exception("status_code: " + str(resp.status_code))
 
     def get_host(self):
         """RobotWebService
@@ -295,15 +299,14 @@ def main(argv):
     #print (argv)
     try:
         web_service = RobotWebService(host="10.0.2.2", port=8610, timeout=1)
-        #result = web_service.refresh_priority_high()
+        result = web_service.refresh_priority_high()
         result = web_service.refresh_priority_medium()
-        #result = web_service.refresh_priority_low()
+        result = web_service.refresh_priority_low()
         web_service.close_session()
         print (web_service.get_root())
-        #lists = {"one1":{}, "one2":{"two1":{},"two2":{}}, "one3":{"two1":{"three1":{},"three2":{}},"two2":{}}}
         if result:
+            web_service.show_tree(web_service.get_root(), 1)
             pass
-            #web_service.show_tree(web_service.get_root(), 1)
     except requests.ConnectionError:
         print ("ConnectionError")
     except requests.Timeout:

@@ -1,3 +1,3 @@
 #LWP-Cookies-2.0
-Set-Cookie3: -http-session-="148::http.session::21ba24e3df8b502138c199063e576f41"; path="/"; domain=""; path_spec; discard; HttpOnly=None; version=0
-Set-Cookie3: ABBCX=23; path="/"; domain=""; path_spec; discard; HttpOnly=None; version=0
+Set-Cookie3: -http-session-="23::http.session::cdf32bb0005735dfb6dc8824ff96ce00"; path="/"; domain=".10.0.2.2"; path_spec; discard; httponly=None; version=0
+Set-Cookie3: ABBCX=75; path="/"; domain=".10.0.2.2"; path_spec; discard; httponly=None; version=0
