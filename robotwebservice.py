@@ -60,7 +60,8 @@ class RobotWebService(object):
         self.__session = None
 
         self.__root = {"ctrl":{}, "rw":{}, "symboldata":{}}
-        self.__root["rw"] = {"panel":{}, "rapid":{}, "system":{}, "iosystem":{}}
+        self.__root["rw"] = {"panel":{}, "cfg":{}, "rapid":{}, "system":{}, "iosystem":{}}
+        self.__root["rw"]["cfg"] = {"moc":{}, "eio":{}, "sio":{}, "sys":{}, "mmc":{}, "proc":{}}
         self.__root["rw"]["rapid"] = {"execution":{}}
         self.__root["rw"]["iosystem"] = {"signals":{}}
         self.__root["symboldata"] = {"T_ROB1":{}}
@@ -151,8 +152,7 @@ class RobotWebService(object):
                 #cookies.set(name=cookie.name, value=cookie.value, domain="." + host)
                 cookies.set_cookie(cookie)
             return cookies
-        except Exception, exception:
-            print exception
+        except:
             raise RWSException(RWSException.ErrorGetCookies, "get_cookies", -1)
 
     def refresh_priority_low(self):
@@ -172,6 +172,10 @@ class RobotWebService(object):
                 "rw/system/options" \
                 , ("option",) \
                 , self.__root["rw"]["system"])
+            self.refresh_cfg( \
+                "moc" \
+                , "ROBOT_SERIAL_NUMBER" \
+                , self.__root["rw"]["cfg"]["moc"])
         except Exception, exception:
             if isinstance(exception, RWSException):
                 raise
@@ -183,9 +187,7 @@ class RobotWebService(object):
         """
         try:
             self.__root["symboldata"]["T_ROB1"]["user"].update(self.get_symbol_data(\
-                "T_ROB1", "user", "reg1"))
-            self.__root["symboldata"]["T_ROB1"]["user"].update(self.get_symbol_data(\
-                "T_ROB1", "user", ("reg2", "reg3", "reg4", "reg5")))
+                "T_ROB1", "user", ("reg1", "reg2", "reg3", "reg4", "reg5")))
         except Exception, exception:
             if isinstance(exception, RWSException):
                 raise
@@ -311,24 +313,13 @@ class RobotWebService(object):
         try:
             self.get_session()
             symbols = {}
-            if isinstance(names, tuple):
-                for name in names:
-                    url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
-                        .format(self.__host, self.__port, task, module, name)
-                    resp = self.__session.get(url, timeout=self.__timeout)
-                    if resp.status_code == 200:
-                        obj = json.loads(resp.text)
-                        symbols[name] = obj["_embedded"]["_state"][0]["value"]
-                    else:
-                        raise RWSException(RWSException.ErrorGetSymbolData
-                                           , "status_code", resp.status_code)
-            else:
+            for name in names:
                 url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
-                    .format(self.__host, self.__port, task, module, names)
+                    .format(self.__host, self.__port, task, module, name)
                 resp = self.__session.get(url, timeout=self.__timeout)
                 if resp.status_code == 200:
                     obj = json.loads(resp.text)
-                    symbols[names] = obj["_embedded"]["_state"][0]["value"]
+                    symbols[name] = obj["_embedded"]["_state"][0]["value"]
                 else:
                     raise RWSException(RWSException.ErrorGetSymbolData
                                        , "status_code", resp.status_code)
@@ -341,6 +332,35 @@ class RobotWebService(object):
             if isinstance(exception, RWSException):
                 raise
             raise RWSException(RWSException.ErrorGetSymbolData, "get_symbol_data", -1)
+
+    def refresh_cfg(self, domain, domain_type, domain_values):
+        """refresh_resources
+        rw/cfg/moc/MOTION_PLANNER/instances
+        """
+        try:
+            self.get_session()
+            domain_values[domain_type] = {}
+            url = "http://{0}:{1}/rw/cfg/{2}/{3}/instances?json=1".format(
+                self.__host, self.__port, domain, domain_type)
+            resp = self.__session.get(url, timeout=self.__timeout)
+            if resp.status_code == 200:
+                obj = json.loads(resp.text)
+                for state in obj["_embedded"]["_state"]:
+                    domain_values[domain_type][state["_title"]] = {}
+                    for attrib in state["attrib"]:
+                        domain_values[domain_type][state["_title"]][attrib["_title"]] \
+                            = attrib["value"]
+            else:
+                raise RWSException(RWSException.ErrorRefreshCfg
+                                   , "status_code", resp.status_code)
+        except requests.Timeout:
+            raise RWSException(RWSException.ErrorTimeOut, "refresh_cfg", -1)
+        except requests.ConnectionError:
+            raise RWSException(RWSException.ErrorConnection, "refresh_cfg", -1)
+        except Exception, exception:
+            if isinstance(exception, RWSException):
+                raise
+            raise RWSException(RWSException.ErrorRefreshCfg, "refresh_cfg", -1)
 
     def get_host(self):
         """RobotWebService
@@ -386,7 +406,7 @@ def main(argv):
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
         web_service.close_session()
-        print web_service.get_root()["ctrl"]
+        print web_service.get_root()["rw"]["cfg"]
         #web_service.show_tree(web_service.get_root(), 1)
     except Exception, exception:
         print exception
