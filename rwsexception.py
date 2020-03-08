@@ -1,3 +1,8 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# @Time    : 2020-3-7
+# @Author  : Michael
+
 """RWSException
 chmod a+x we*
 

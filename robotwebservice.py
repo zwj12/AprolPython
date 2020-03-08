@@ -1,5 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+# @Time    : 2020-3-7
+# @Author  : Michael
 
 """RobotWebService
 chmod a+x we*
@@ -19,10 +21,17 @@ class RobotWebService(object):
     The subset of RobotWebService is similar of web services resources
     which is described at http://developercenter.robotstudio.com/webservice/api_reference
     |___rw
-        |___rapid
-            |___execution
+        |___cfg
+            |___sio
+            |___sys
+            |___eio
+            |___moc
+            |___proc
+            |___mmc
         |___iosystem
             |___signals
+        |___rapid
+            |___execution
         |___system
             |___option
             |___robot-type
@@ -406,7 +415,11 @@ def main(argv):
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
         web_service.close_session()
-        print web_service.get_root()["rw"]["cfg"]
+        SERIAL_NUMBER = web_service.get_root()["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
+        sss = SERIAL_NUMBER["robot_serial_number_high_part"] \
+            + "-" +SERIAL_NUMBER["robot_serial_number_low_part"]
+        print sss
+        #print web_service.get_root()["rw"]["cfg"]
         #web_service.show_tree(web_service.get_root(), 1)
     except Exception, exception:
         print exception
