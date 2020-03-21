@@ -64,6 +64,7 @@ class RobotWebService(object):
         self.__port = port
         self.__digest_auth = HTTPDigestAuth(username, password)
         self.__timeout = kwargs.get("timeout", 0.5)
+        self.__proxies = kwargs.get("proxies", None)
         if self.__timeout < 0.1:
             self.__timeout = 0.5
         self.__session = None
@@ -86,10 +87,10 @@ class RobotWebService(object):
             # by xml format data
             url = "http://{0}:{1}/ctrl".format(self.__host, self.__port)
             try:
-                resp = session.get(url, timeout=self.__timeout)
+                resp = session.get(url, timeout=self.__timeout, proxies=self.__proxies)
                 if resp.status_code == 401:
                     session.cookies = requests.cookies.RequestsCookieJar()
-                    resp = session.get(url, auth=self.__digest_auth, timeout=self.__timeout)
+                    resp = session.get(url, auth=self.__digest_auth, timeout=self.__timeout, proxies=self.__proxies)
                     if resp.status_code == 200:
                         RobotWebService.save_cookies(session.cookies, self.__host)
                 if resp.status_code == 200:
@@ -162,7 +163,8 @@ class RobotWebService(object):
                 cookies.set_cookie(cookie)
             return cookies
         except:
-            raise RWSException(RWSException.ErrorGetCookies, "get_cookies", -1)
+            return requests.cookies.RequestsCookieJar()
+            #raise RWSException(RWSException.ErrorGetCookies, "get_cookies", -1)
 
     def refresh_priority_low(self):
         """refresh_priority_low
@@ -228,7 +230,7 @@ class RobotWebService(object):
         try:
             self.get_session()
             url = "http://{0}:{1}/rw/iosystem/signals?json=1".format(self.__host, self.__port)
-            resp = self.__session.get(url, timeout=self.__timeout)
+            resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
             if resp.status_code == 200:
                 obj = json.loads(resp.text)
                 for state in obj["_embedded"]["_state"]:
@@ -258,7 +260,7 @@ class RobotWebService(object):
             if isinstance(resources, tuple):
                 for resource, key in zip(resources, keys):
                     url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resource)
-                    resp = self.__session.get(url, timeout=self.__timeout)
+                    resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
                     if resp.status_code == 200:
                         obj = json.loads(resp.text)
                         values[key] = RobotWebService.get_json_value(obj, key)
@@ -267,7 +269,7 @@ class RobotWebService(object):
                                            , "status_code", resp.status_code)
             else:
                 url = "http://{0}:{1}/{2}?json=1".format(self.__host, self.__port, resources)
-                resp = self.__session.get(url, timeout=self.__timeout)
+                resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
                 if resp.status_code == 200:
                     obj = json.loads(resp.text)
                     for key in keys:
@@ -325,7 +327,7 @@ class RobotWebService(object):
             for name in names:
                 url = "http://{0}:{1}/rw/rapid/symbol/data/RAPID/{2}/{3}/{4}?json=1"\
                     .format(self.__host, self.__port, task, module, name)
-                resp = self.__session.get(url, timeout=self.__timeout)
+                resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
                 if resp.status_code == 200:
                     obj = json.loads(resp.text)
                     symbols[name] = obj["_embedded"]["_state"][0]["value"]
@@ -351,7 +353,7 @@ class RobotWebService(object):
             domain_values[domain_type] = {}
             url = "http://{0}:{1}/rw/cfg/{2}/{3}/instances?json=1".format(
                 self.__host, self.__port, domain, domain_type)
-            resp = self.__session.get(url, timeout=self.__timeout)
+            resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
             if resp.status_code == 200:
                 obj = json.loads(resp.text)
                 for state in obj["_embedded"]["_state"]:
@@ -410,7 +412,12 @@ def main(argv):
     """
     #print (argv)
     try:
-        web_service = RobotWebService(host="10.0.2.2", port=8610, timeout=1)
+        proxies = {
+            "http": "http://192.168.2.52:8600",
+            "https": "http://192.168.2.52:8600",
+            }
+        #web_service = RobotWebService(host="192.168.2.52", port=8612, timeout=1, proxies=proxies)
+        web_service = RobotWebService(host="10.0.2.2", port=8612, timeout=1)
         web_service.refresh_priority_high()
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()

@@ -5,6 +5,7 @@
 
 """robotlogging
 chmod a+x we*
+proxy --hostname 192.168.2.52 --port 8080
 
 """
 
