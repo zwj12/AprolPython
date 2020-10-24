@@ -417,7 +417,7 @@ def main(argv):
             "https": "http://192.168.2.52:8600",
             }
         #web_service = RobotWebService(host="192.168.2.52", port=8612, timeout=1, proxies=proxies)
-        web_service = RobotWebService(host="10.0.2.2", port=8612, timeout=1)
+        web_service = RobotWebService(host="10.0.2.2", port=46112, timeout=1)
         web_service.refresh_priority_high()
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
@@ -425,7 +425,13 @@ def main(argv):
         SERIAL_NUMBER = web_service.get_root()["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
         sss = SERIAL_NUMBER["robot_serial_number_high_part"] \
             + "-" +SERIAL_NUMBER["robot_serial_number_low_part"]
-        print sss
+        signals = web_service.get_root()["rw"]["iosystem"]["signals"]["doSysOutTaskExecuting"]["lvalue"]
+        value = web_service.get_root()["symboldata"]["T_ROB1"]
+        print value
+        names = ("numPartCount",)
+        values = web_service.get_symbol_data( \
+            "T_ROB1", "MainModule", names)
+        print values["numPartCount"]
         #print web_service.get_root()["rw"]["cfg"]
         #web_service.show_tree(web_service.get_root(), 1)
     except Exception, exception:
