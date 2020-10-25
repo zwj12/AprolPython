@@ -83,7 +83,7 @@ class RobotWebService(object):
         """
         if self.__session is None:
             session = requests.Session()
-            session.cookies = RobotWebService.get_cookies(self.__host)
+            session.cookies = RobotWebService.get_cookies(self.__host, self.__port)
             # by xml format data
             url = "http://{0}:{1}/ctrl".format(self.__host, self.__port)
             try:
@@ -92,7 +92,7 @@ class RobotWebService(object):
                     session.cookies = requests.cookies.RequestsCookieJar()
                     resp = session.get(url, auth=self.__digest_auth, timeout=self.__timeout, proxies=self.__proxies)
                     if resp.status_code == 200:
-                        RobotWebService.save_cookies(session.cookies, self.__host)
+                        RobotWebService.save_cookies(session.cookies, self.__host, self.__port)
                 if resp.status_code == 200:
                     self.__session = session
                     xml_response = ET.fromstring(resp.text)
@@ -137,12 +137,12 @@ class RobotWebService(object):
             self.__session.close()
 
     @staticmethod
-    def save_cookies(cookies, host):
+    def save_cookies(cookies, host, port):
         """save_cookies
 
         """
         try:
-            lwp_cookie_jar = cookielib.LWPCookieJar(filename="robot_" + host + ".txt")
+            lwp_cookie_jar = cookielib.LWPCookieJar(filename="robot_" + host + "_" + str(port) + ".txt")
             for cookie in cookies:
                 lwp_cookie_jar.set_cookie(cookie)
             lwp_cookie_jar.save(ignore_discard=True)
@@ -150,12 +150,12 @@ class RobotWebService(object):
             raise RWSException(RWSException.ErrorSaveCookies, "save_cookies", -1)
 
     @staticmethod
-    def get_cookies(host):
+    def get_cookies(host, port):
         """load_cookies
 
         """
         try:
-            lwp_cookie_jar = cookielib.LWPCookieJar(filename="robot_" + host + ".txt")
+            lwp_cookie_jar = cookielib.LWPCookieJar(filename="robot_" + host + "_" + str(port) + ".txt")
             lwp_cookie_jar.load(ignore_discard=True)
             cookies = requests.cookies.RequestsCookieJar()
             for cookie in lwp_cookie_jar:
