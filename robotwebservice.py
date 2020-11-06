@@ -14,6 +14,7 @@ import re
 import json
 import xml.etree.ElementTree as ET
 import cookielib
+import MySQLdb
 from requests.auth import HTTPDigestAuth
 import requests
 from rwsexception import RWSException
@@ -194,6 +195,7 @@ class RobotWebService(object):
                 "moc" \
                 , "ROBOT_SERIAL_NUMBER" \
                 , self.__root["rw"]["cfg"]["moc"])
+            self.refresh_elog()
         except Exception, exception:
             if isinstance(exception, RWSException):
                 raise
@@ -415,47 +417,48 @@ class RobotWebService(object):
             raise RWSException(RWSException.ErrorRefreshElog, "refresh_elog", -1)
 
     def refresh_elog_messages(self, domain, elogseqnum_start, resource):
-        """refresh_elog_messages2
+        """refresh_elog_messages
         rw/elog/0
         """
         try:
             self.get_session()
-            pattern_elogseqnum = re.compile(r'/(\d+)$')    
+            pattern_elogseqnum = re.compile(r'/(\d+)$')
             numevts = int(self.__root["rw"]["elog"][domain]["numevts"])
             messages = {}
-            elogseqnum_next = elogseqnum_start            
-            while len(messages)<numevts:                
+            url_base = "http://{0}:{1}/rw/elog/{2}".format(self.__host, self.__port, domain)
+            while len(messages) < numevts:
                 if resource == "title":
-                    url = "http://{0}:{1}/rw/elog/{2}?elogseqnum={3}&lang=en&resource=title&json=1" \
-                        .format(self.__host, self.__port, domain, elogseqnum_next)
+                    url = url_base + "?elogseqnum={0}&lang=en&resource=title&json=1" \
+                        .format(elogseqnum_start)
                 else:
-                    url = "http://{0}:{1}/rw/elog/{2}?elogseqnum={3}&json=1".format(
-                        self.__host, self.__port, domain, elogseqnum_next)
-                resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies) 
+                    url = url_base + "?elogseqnum={0}&json=1".format(elogseqnum_start)
+                resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
                 if resp.status_code == 200:
                     obj = json.loads(resp.text)
                     for state in obj["_embedded"]["_state"]:
                         message = {}
-                        message["code"] = state["code"]
+                        message["code"] = int(state["code"])
                         message["tstamp"] = state["tstamp"]
                         match_elogseqnum = pattern_elogseqnum.search(state["_title"])
                         message["elogseqnum"] = int(match_elogseqnum.group(1))
-                        elogseqnum_next = message["elogseqnum"] + 1                        
+                        elogseqnum_start = message["elogseqnum"] + 1
                         if resource == "title":
-                            message["msg-type"] = state["msg-type"]
+                            message["msg-type"] = int(state["msg-type"])
                             message["title"] = state["title"]
                         else:
-                            message["msgtype"] = state["msgtype"]
+                            message["msg-type"] = int(state["msgtype"])
                             message["src-name"] = state["src-name"]
                             message["argc"] = state["argc"]
                             if message["argc"] != "0":
                                 message["argv"] = state["argv"]
                         messages[message["elogseqnum"]] = message
-                    if len(obj["_embedded"]["_state"])<50:
+                    if len(obj["_embedded"]["_state"]) < 50:
                         break
+                elif resp.status_code == 204:
+                    break
                 else:
                     raise RWSException(RWSException.ErrorRefreshElog
-                                    , "status_code", resp.status_code)
+                                       , "status_code", resp.status_code)
             self.__root["rw"]["elog"][domain]["messages"] = messages
         except requests.Timeout:
             raise RWSException(RWSException.ErrorTimeOut, "refresh_elog_messages", -1)
@@ -465,7 +468,73 @@ class RobotWebService(object):
             if isinstance(exception, RWSException):
                 raise
             raise RWSException(RWSException.ErrorRefreshElogMessages, "refresh_elog_messages", -1)
-        
+
+    def get_mariadb_last_elogseqnum(self
+                                    , host="localhost"
+                                    , username="buradmin"
+                                    , password=".buradmin"
+                                    , database="BUR_PDA"):
+        """get_mariadb_last_elogseqnum
+
+        """
+        try:
+            mariadb = MySQLdb.connect(host, username, password, database, charset='utf8')
+            cursor = mariadb.cursor()
+            sql = "SELECT MAX(elogseqnum) FROM `Robot-Elog` where ip_address='%s'" % self.__host
+            cursor.execute(sql)
+            last_elogseqnum = cursor.fetchone()[0]
+            mariadb.close()
+            if last_elogseqnum is None:
+                last_elogseqnum = 0
+            return last_elogseqnum
+        except Exception, exception:
+            raise RWSException(RWSException.ErrorGetMariadbLastElogseqnum
+                               , "get_mariadb_last_elogseqnum", -1)
+
+    def update_mariadb_elog_messages(self
+                                     , host="localhost"
+                                     , username="buradmin"
+                                     , password=".buradmin"
+                                     , database="BUR_PDA"):
+        """update_mariadb_elog_messages
+
+        """
+        try:
+            serial_number_dict = self.__root["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
+            serial_number = serial_number_dict["robot_serial_number_high_part"] \
+                + "-" +serial_number_dict["robot_serial_number_low_part"]
+            sysid = self.__root["rw"]["system"]["sysid"][1:-1]
+            mariadb = MySQLdb.connect(host, username, password, database, charset='utf8')
+            cursor = mariadb.cursor()
+            try:
+                for message in self.__root["rw"]["elog"]["0"]["messages"].values():
+                    values = (self.__host
+                              , serial_number
+                              , self.__root["ctrl"]["ctrl-name"]
+                              , self.__root["rw"]["system"]["name"]
+                              , sysid
+                              , message["tstamp"].replace(" T ", " ")
+                              , message["elogseqnum"]
+                              , message["title"]
+                              , message["code"]
+                              , message["msg-type"])
+                    sql = "INSERT INTO `Robot-Elog`"
+                    sql += " (ip_address,serial_number,controller_name,system_name,sysid \
+                    ,tstamp,elogseqnum,title,code,msg_type)"
+                    sql += " VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', %d, %d)" % values
+                    cursor.execute(sql)
+                mariadb.commit()
+            except:
+                mariadb.rollback()
+                raise RWSException(RWSException.ErrorUpdateMariadbElogMessages
+                                   , "update_mariadb_elog_messages rollback", -1)
+            mariadb.close()
+        except Exception, exception:
+            if isinstance(exception, RWSException):
+                raise
+            raise RWSException(RWSException.ErrorUpdateMariadbElogMessages
+                               , "update_mariadb_elog_messages", -1)
+
     def get_host(self):
         """RobotWebService
 
@@ -514,9 +583,10 @@ def main(argv):
         web_service.refresh_priority_high()
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
-        web_service.refresh_elog()
-        elogseqnum = int(web_service.get_root()["rw"]["elog"]["0"]["numevts"]) - 50
-        web_service.refresh_elog_messages("0", 1, "title")
+        last_elogseqnum = web_service.get_mariadb_last_elogseqnum()
+        #elogseqnum = int(web_service.get_root()["rw"]["elog"]["0"]["numevts"]) - 50
+        elogseqnum = last_elogseqnum+1
+        web_service.refresh_elog_messages("0", elogseqnum, "title")
         web_service.close_session()
         #serial_number = web_service.get_root()["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
         #sss = serial_number["robot_serial_number_high_part"] \
@@ -534,7 +604,8 @@ def main(argv):
             #"T_ROB1", "MainModule", names)
         #print values["numPartCount"]
         #print web_service.get_root()["rw"]["cfg"]
-        print web_service.get_root()["rw"]["elog"]["0"]
+        #print web_service.get_root()["rw"]["elog"]["0"]
+        web_service.update_mariadb_elog_messages()
         #web_service.show_tree(web_service.get_root(), 1)
     except Exception, exception:
         print exception

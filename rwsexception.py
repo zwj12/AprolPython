@@ -28,6 +28,8 @@ class RWSException(Exception):
     ErrorRefreshCfg = 14
     ErrorRefreshElog = 15
     ErrorRefreshElogMessages = 16
+    ErrorGetMariadbLastElogseqnum = 17
+    ErrorUpdateMariadbElogMessages = 18
 
     def __init__(self, error_code, error_message, response_status_code):
         Exception.__init__(self)
