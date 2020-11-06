@@ -26,6 +26,8 @@ class RWSException(Exception):
     ErrorGetJsonValue = 12
     ErrorRefreshXmlCtrl = 13
     ErrorRefreshCfg = 14
+    ErrorRefreshElog = 15
+    ErrorRefreshElogMessages = 16
 
     def __init__(self, error_code, error_message, response_status_code):
         Exception.__init__(self)

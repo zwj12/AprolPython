@@ -5,10 +5,12 @@
 
 """RobotWebService
 chmod a+x we*
+pylint robotwebservice.py
 
 """
 
 import sys
+import re
 import json
 import xml.etree.ElementTree as ET
 import cookielib
@@ -71,7 +73,8 @@ class RobotWebService(object):
         self.__session = None
 
         self.__root = {"ctrl":{}, "rw":{}, "symboldata":{}}
-        self.__root["rw"] = {"panel":{}, "cfg":{}, "rapid":{}, "system":{}, "iosystem":{}, "elog":{}}
+        self.__root["rw"] = {"panel":{}, "cfg":{}, "rapid":{},
+                             "system":{}, "iosystem":{}, "elog":{}}
         self.__root["rw"]["cfg"] = {"moc":{}, "eio":{}, "sio":{}, "sys":{}, "mmc":{}, "proc":{}}
         self.__root["rw"]["rapid"] = {"execution":{}}
         self.__root["rw"]["iosystem"] = {"signals":{}}
@@ -91,7 +94,8 @@ class RobotWebService(object):
                 resp = session.get(url, timeout=self.__timeout, proxies=self.__proxies)
                 if resp.status_code == 401:
                     session.cookies = requests.cookies.RequestsCookieJar()
-                    resp = session.get(url, auth=self.__digest_auth, timeout=self.__timeout, proxies=self.__proxies)
+                    resp = session.get(url, auth=self.__digest_auth,
+                                       timeout=self.__timeout, proxies=self.__proxies)
                     if resp.status_code == 200:
                         RobotWebService.save_cookies(session.cookies, self.__host, self.__port)
                 if resp.status_code == 200:
@@ -143,7 +147,8 @@ class RobotWebService(object):
 
         """
         try:
-            lwp_cookie_jar = cookielib.LWPCookieJar(filename="robot_" + host + "_" + str(port) + ".txt")
+            lwp_cookie_jar = cookielib.LWPCookieJar(
+                filename="robot_" + host + "_" + str(port) + ".txt")
             for cookie in cookies:
                 lwp_cookie_jar.set_cookie(cookie)
             lwp_cookie_jar.save(ignore_discard=True)
@@ -156,7 +161,8 @@ class RobotWebService(object):
 
         """
         try:
-            lwp_cookie_jar = cookielib.LWPCookieJar(filename="robot_" + host + "_" + str(port) + ".txt")
+            lwp_cookie_jar = cookielib.LWPCookieJar(
+                filename="robot_" + host + "_" + str(port) + ".txt")
             lwp_cookie_jar.load(ignore_discard=True)
             cookies = requests.cookies.RequestsCookieJar()
             for cookie in lwp_cookie_jar:
@@ -374,64 +380,19 @@ class RobotWebService(object):
                 raise
             raise RWSException(RWSException.ErrorRefreshCfg, "refresh_cfg", -1)
 
-    def refresh_elog_messages(self, domain, elogseqnum, resource):
-        """refresh_elog_messages
-        rw/elog/0
-        """
-        try:
-            self.get_session()
-            if resource == "title":
-                url = "http://{0}:{1}/rw/elog/{2}?elogseqnum={3}&lang=en&resource=title&json=1".format(
-                    self.__host, self.__port, domain, elogseqnum)
-            else:
-                url = "http://{0}:{1}/rw/elog/{2}?elogseqnum={3}&json=1".format(
-                    self.__host, self.__port, domain, elogseqnum) 
-            resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)            
-            if resp.status_code == 200:
-                obj = json.loads(resp.text)
-                elogs = []
-                for state in obj["_embedded"]["_state"]: 
-                    elog = {}
-                    elog["code"] = state["code"]
-                    elog["tstamp"] = state["tstamp"]                    
-                    if resource == "title":                        
-                        elog["msg-type"] = state["msg-type"]
-                        elog["title"] = state["title"]
-                    else:
-                        elog["msgtype"] = state["msgtype"]
-                        elog["src-name"] = state["src-name"]
-                        elog["argc"] = state["argc"]
-                        if elog["argc"] != "0":
-                            elog["argv"] = state["argv"]
-                    elogs.append(elog)
-                self.__root["rw"]["elog"][domain]["elogs"] = elogs
-            else:
-                raise RWSException(RWSException.ErrorRefreshElog
-                                   , "status_code", resp.status_code)
-        except requests.Timeout:
-            raise RWSException(RWSException.ErrorTimeOut, "refresh_elog_messages", -1)
-        except requests.ConnectionError:
-            raise RWSException(RWSException.ErrorConnection, "refresh_elog_messages", -1)
-        except Exception, exception:
-            if isinstance(exception, RWSException):
-                raise
-            raise RWSException(RWSException.ErrorRefreshCfg, "refresh_elog_messages", -1)
-        
-
     def refresh_elog(self):
         """refresh_elog
         rw/elog
-        """        
+        """
         try:
             self.get_session()
             url = "http://{0}:{1}/rw/elog".format(
                 self.__host, self.__port)
             resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
-            number_events = 0
             if resp.status_code == 200:
                 xml_data = ET.fromstring(resp.text)
-                for domain_data in xml_data.findall(".//{0}li[@class='elog-domain-li']"
-                                    .format(self.__namespace)):
+                for domain_data in xml_data.findall( \
+                    ".//{0}li[@class='elog-domain-li']".format(self.__namespace)):
                     domain = {domain_data.attrib["title"]:{}}
                     numevts = domain_data.find(
                         "{0}span[@class='numevts']"
@@ -441,7 +402,6 @@ class RobotWebService(object):
                         .format(self.__namespace)).text
                     domain[domain_data.attrib["title"]] = {"numevts":numevts, "buffsize":buffsize}
                     self.__root["rw"]["elog"].update(domain)
-                self.refresh_elog_messages("0", 500, "title")
             else:
                 raise RWSException(RWSException.ErrorRefreshElog
                                    , "status_code", resp.status_code)
@@ -452,9 +412,60 @@ class RobotWebService(object):
         except Exception, exception:
             if isinstance(exception, RWSException):
                 raise
-            raise RWSException(RWSException.ErrorRefreshCfg, "refresh_elog", -1)
+            raise RWSException(RWSException.ErrorRefreshElog, "refresh_elog", -1)
 
-
+    def refresh_elog_messages(self, domain, elogseqnum_start, resource):
+        """refresh_elog_messages2
+        rw/elog/0
+        """
+        try:
+            self.get_session()
+            pattern_elogseqnum = re.compile(r'/(\d+)$')    
+            numevts = int(self.__root["rw"]["elog"][domain]["numevts"])
+            messages = {}
+            elogseqnum_next = elogseqnum_start            
+            while len(messages)<numevts:                
+                if resource == "title":
+                    url = "http://{0}:{1}/rw/elog/{2}?elogseqnum={3}&lang=en&resource=title&json=1" \
+                        .format(self.__host, self.__port, domain, elogseqnum_next)
+                else:
+                    url = "http://{0}:{1}/rw/elog/{2}?elogseqnum={3}&json=1".format(
+                        self.__host, self.__port, domain, elogseqnum_next)
+                resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies) 
+                if resp.status_code == 200:
+                    obj = json.loads(resp.text)
+                    for state in obj["_embedded"]["_state"]:
+                        message = {}
+                        message["code"] = state["code"]
+                        message["tstamp"] = state["tstamp"]
+                        match_elogseqnum = pattern_elogseqnum.search(state["_title"])
+                        message["elogseqnum"] = int(match_elogseqnum.group(1))
+                        elogseqnum_next = message["elogseqnum"] + 1                        
+                        if resource == "title":
+                            message["msg-type"] = state["msg-type"]
+                            message["title"] = state["title"]
+                        else:
+                            message["msgtype"] = state["msgtype"]
+                            message["src-name"] = state["src-name"]
+                            message["argc"] = state["argc"]
+                            if message["argc"] != "0":
+                                message["argv"] = state["argv"]
+                        messages[message["elogseqnum"]] = message
+                    if len(obj["_embedded"]["_state"])<50:
+                        break
+                else:
+                    raise RWSException(RWSException.ErrorRefreshElog
+                                    , "status_code", resp.status_code)
+            self.__root["rw"]["elog"][domain]["messages"] = messages
+        except requests.Timeout:
+            raise RWSException(RWSException.ErrorTimeOut, "refresh_elog_messages", -1)
+        except requests.ConnectionError:
+            raise RWSException(RWSException.ErrorConnection, "refresh_elog_messages", -1)
+        except Exception, exception:
+            if isinstance(exception, RWSException):
+                raise
+            raise RWSException(RWSException.ErrorRefreshElogMessages, "refresh_elog_messages", -1)
+        
     def get_host(self):
         """RobotWebService
 
@@ -504,24 +515,26 @@ def main(argv):
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
         web_service.refresh_elog()
+        elogseqnum = int(web_service.get_root()["rw"]["elog"]["0"]["numevts"]) - 50
+        web_service.refresh_elog_messages("0", 1, "title")
         web_service.close_session()
-        SERIAL_NUMBER = web_service.get_root()["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
-        sss = SERIAL_NUMBER["robot_serial_number_high_part"] \
-            + "-" +SERIAL_NUMBER["robot_serial_number_low_part"]
-        signals = web_service.get_root()["rw"]["iosystem"]["signals"]
+        #serial_number = web_service.get_root()["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
+        #sss = serial_number["robot_serial_number_high_part"] \
+            #+ "-" +serial_number["robot_serial_number_low_part"]
+        #signals = web_service.get_root()["rw"]["iosystem"]["signals"]
         #print signals
-        doSysOutTaskExecuting = signals["doSysOutTaskExecuting"]
-        #print doSysOutTaskExecuting
-        signalValue = doSysOutTaskExecuting["lvalue"]
-        #print signalValue
-        value = web_service.get_root()["symboldata"]["T_ROB1"]        
+        #signal = signals["doSysOutTaskExecuting"]
+        #print signal
+        #signal_value = signal["lvalue"]
+        #print signal_value
+        #value = web_service.get_root()["symboldata"]["T_ROB1"]
         #print value
-        names = ("numPartCount",)
-        values = web_service.get_symbol_data( \
-            "T_ROB1", "MainModule", names)
+        #names = ("numPartCount",)
+        #values = web_service.get_symbol_data( \
+            #"T_ROB1", "MainModule", names)
         #print values["numPartCount"]
         #print web_service.get_root()["rw"]["cfg"]
-        print web_service.get_root()["rw"]["elog"]
+        print web_service.get_root()["rw"]["elog"]["0"]
         #web_service.show_tree(web_service.get_root(), 1)
     except Exception, exception:
         print exception
