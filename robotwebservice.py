@@ -6,7 +6,7 @@
 """RobotWebService
 chmod a+x we*
 pylint robotwebservice.py
-
+proxy --hostname 192.168.2.52 --port 8080
 """
 
 import sys
@@ -418,15 +418,14 @@ class RobotWebService(object):
 
     def refresh_elog_messages(self, domain, elogseqnum_start, resource):
         """refresh_elog_messages
-        rw/elog/0
+        rw/elog/0?elogseqnum=4&lang=en&resource=title&json=1
         """
         try:
             self.get_session()
             pattern_elogseqnum = re.compile(r'/(\d+)$')
-            numevts = int(self.__root["rw"]["elog"][domain]["numevts"])
             messages = {}
             url_base = "http://{0}:{1}/rw/elog/{2}".format(self.__host, self.__port, domain)
-            while len(messages) < numevts:
+            while len(messages) < int(self.__root["rw"]["elog"][domain]["numevts"]):
                 if resource == "title":
                     url = url_base + "?elogseqnum={0}&lang=en&resource=title&json=1" \
                         .format(elogseqnum_start)
@@ -469,6 +468,25 @@ class RobotWebService(object):
                 raise
             raise RWSException(RWSException.ErrorRefreshElogMessages, "refresh_elog_messages", -1)
 
+    def clear_mariadb_elog(self
+                           , host="localhost"
+                           , username="buradmin"
+                           , password=".buradmin"
+                           , database="BUR_PDA"):
+        """clear_mariadb_elog
+
+        """
+        try:
+            mariadb = MySQLdb.connect(host, username, password, database, charset='utf8')
+            cursor = mariadb.cursor()
+            sql = "DELETE FROM `Robot-Elog` where ip_address='%s'" % self.__host
+            cursor.execute(sql)
+            mariadb.commit()
+            mariadb.close()
+        except Exception, exception:
+            raise RWSException(RWSException.ErrorClearMariadbElog
+                               , "clear_mariadb_elog", -1)
+
     def get_mariadb_last_elogseqnum(self
                                     , host="localhost"
                                     , username="buradmin"
@@ -504,6 +522,7 @@ class RobotWebService(object):
             serial_number = serial_number_dict["robot_serial_number_high_part"] \
                 + "-" +serial_number_dict["robot_serial_number_low_part"]
             sysid = self.__root["rw"]["system"]["sysid"][1:-1]
+            last_elogseqnum = 0
             mariadb = MySQLdb.connect(host, username, password, database, charset='utf8')
             cursor = mariadb.cursor()
             try:
@@ -523,12 +542,15 @@ class RobotWebService(object):
                     ,tstamp,elogseqnum,title,code,msg_type)"
                     sql += " VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', %d, %d)" % values
                     cursor.execute(sql)
+                    if last_elogseqnum < message["elogseqnum"]:
+                        last_elogseqnum = message["elogseqnum"]
                 mariadb.commit()
             except:
                 mariadb.rollback()
                 raise RWSException(RWSException.ErrorUpdateMariadbElogMessages
                                    , "update_mariadb_elog_messages rollback", -1)
             mariadb.close()
+            return last_elogseqnum
         except Exception, exception:
             if isinstance(exception, RWSException):
                 raise
@@ -584,9 +606,12 @@ def main(argv):
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
         last_elogseqnum = web_service.get_mariadb_last_elogseqnum()
+        #web_service.clear_mariadb_elog()
         #elogseqnum = int(web_service.get_root()["rw"]["elog"]["0"]["numevts"]) - 50
         elogseqnum = last_elogseqnum+1
         web_service.refresh_elog_messages("0", elogseqnum, "title")
+        last_elogseqnum = web_service.update_mariadb_elog_messages()
+        print last_elogseqnum
         web_service.close_session()
         #serial_number = web_service.get_root()["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
         #sss = serial_number["robot_serial_number_high_part"] \
@@ -605,7 +630,6 @@ def main(argv):
         #print values["numPartCount"]
         #print web_service.get_root()["rw"]["cfg"]
         #print web_service.get_root()["rw"]["elog"]["0"]
-        web_service.update_mariadb_elog_messages()
         #web_service.show_tree(web_service.get_root(), 1)
     except Exception, exception:
         print exception
