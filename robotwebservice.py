@@ -479,7 +479,8 @@ class RobotWebService(object):
         try:
             mariadb = MySQLdb.connect(host, username, password, database, charset='utf8')
             cursor = mariadb.cursor()
-            sql = "DELETE FROM `Robot-Elog` where ip_address='%s'" % self.__host
+            sql = "DELETE FROM `robot_elog` WHERE ip_address='%s' AND system_name='%s'" \
+                % (self.__host, self.__root["rw"]["system"]["name"])
             cursor.execute(sql)
             mariadb.commit()
             mariadb.close()
@@ -498,7 +499,9 @@ class RobotWebService(object):
         try:
             mariadb = MySQLdb.connect(host, username, password, database, charset='utf8')
             cursor = mariadb.cursor()
-            sql = "SELECT MAX(elogseqnum) FROM `Robot-Elog` where ip_address='%s'" % self.__host
+            sql = "SELECT MAX(elogseqnum) FROM `robot_elog`" \
+                + " WHERE ip_address='%s' AND system_name='%s'" \
+                % (self.__host, self.__root["rw"]["system"]["name"])
             cursor.execute(sql)
             last_elogseqnum = cursor.fetchone()[0]
             mariadb.close()
@@ -537,7 +540,7 @@ class RobotWebService(object):
                               , message["title"]
                               , message["code"]
                               , message["msg-type"])
-                    sql = "INSERT INTO `Robot-Elog`"
+                    sql = "INSERT INTO `robot_elog`"
                     sql += " (ip_address,serial_number,controller_name,system_name,sysid \
                     ,tstamp,elogseqnum,title,code,msg_type)"
                     sql += " VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', %d, %d)" % values
@@ -606,8 +609,8 @@ def main(argv):
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
         last_elogseqnum = web_service.get_mariadb_last_elogseqnum()
-        #web_service.clear_mariadb_elog()
-        #elogseqnum = int(web_service.get_root()["rw"]["elog"]["0"]["numevts"]) - 50
+        web_service.clear_mariadb_elog()
+        elogseqnum = int(web_service.get_root()["rw"]["elog"]["0"]["numevts"]) - 50
         elogseqnum = last_elogseqnum+1
         web_service.refresh_elog_messages("0", elogseqnum, "title")
         last_elogseqnum = web_service.update_mariadb_elog_messages()
@@ -622,12 +625,12 @@ def main(argv):
         #print signal
         #signal_value = signal["lvalue"]
         #print signal_value
-        #value = web_service.get_root()["symboldata"]["T_ROB1"]
-        #print value
-        #names = ("numPartCount",)
-        #values = web_service.get_symbol_data( \
-            #"T_ROB1", "MainModule", names)
-        #print values["numPartCount"]
+        value = web_service.get_root()["symboldata"]["T_ROB1"]
+        print value
+        names = ("numPartCount",)
+        values = web_service.get_symbol_data( \
+            "T_ROB1", "MainModule", names)
+        print values["numPartCount"]
         #print web_service.get_root()["rw"]["cfg"]
         #print web_service.get_root()["rw"]["elog"]["0"]
         #web_service.show_tree(web_service.get_root(), 1)

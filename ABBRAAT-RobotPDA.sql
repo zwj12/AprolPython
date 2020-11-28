@@ -1,5 +1,5 @@
 -- mysql -u buradmin -p.buradmin < /home/engin/Documents/AprolPython/ABBRAAT-RobotPDA.sql
--- DROP TABLE `ABBRAAT-RobotPDA`;
+-- DROP TABLE BUR_PDA.`ABBRAAT-RobotPDA`;
 
 CREATE TABLE IF NOT EXISTS BUR_PDA.`ABBRAAT-RobotPDA`
 (
@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS BUR_PDA.`ABBRAAT-RobotPDA`
    instance varchar(100) DEFAULT NULL,
    rec_rate varchar(100) DEFAULT NULL,
    equip_id varchar(100) DEFAULT NULL,
-   sample_val DOUBLE DEFAULT NULL,
    ip_address varchar(64) DEFAULT NULL,
    serial_number varchar(64) DEFAULT NULL,
    controller_name varchar(64) DEFAULT NULL,
@@ -31,5 +30,5 @@ CREATE TABLE IF NOT EXISTS BUR_PDA.`ABBRAAT-RobotPDA`
    pf_is_service1 BIT DEFAULT NULL,
    part_count integer DEFAULT NULL,
    executing_time integer DEFAULT NULL,
-   UNIQUE KEY `uniq_RobotPDA`(ts, instance, sample_val,ip_address,serial_number,controller_name,system_name,robot_ware,operating_mode,controller_state,execution_state,run_mode,operating_mode_code,controller_state_code,execution_state_code,run_mode_code,speed_ratio,task_executing,pf_idle1,pf_executing1,pf_active_order1,pf_is_service1,part_count,executing_time)
+   UNIQUE KEY `uniq_RobotPDA`(ts, instance, ip_address,serial_number,controller_name,system_name,robot_ware,operating_mode,controller_state,execution_state,run_mode,operating_mode_code,controller_state_code,execution_state_code,run_mode_code,speed_ratio,task_executing,pf_idle1,pf_executing1,pf_active_order1,pf_is_service1,part_count,executing_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
