@@ -604,7 +604,7 @@ def main(argv):
             "https": "http://192.168.2.52:8600",
             }
         #web_service = RobotWebService(host="192.168.2.52", port=8612, timeout=1, proxies=proxies)
-        web_service = RobotWebService(host="10.0.2.2", port=46112, timeout=1)
+        web_service = RobotWebService(host="10.0.2.2", port=46111, timeout=1)
         web_service.refresh_priority_high()
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
@@ -629,8 +629,9 @@ def main(argv):
         print value
         names = ("numPartCount",)
         values = web_service.get_symbol_data( \
-            "T_ROB1", "MainModule", names)
-        print values["numPartCount"]
+            "T_ROB1", "OpcUaModule", names)
+        print int(float(values["numPartCount"]))
+        print int(float("6.3"))
         #print web_service.get_root()["rw"]["cfg"]
         #print web_service.get_root()["rw"]["elog"]["0"]
         #web_service.show_tree(web_service.get_root(), 1)
