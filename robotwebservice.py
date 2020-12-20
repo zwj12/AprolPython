@@ -183,10 +183,11 @@ class RobotWebService(object):
                 "rw/system" \
                 , ("name", "sysid", "rwversion", "starttm") \
                 , self.__root["rw"]["system"])
-            self.refresh_resources( \
-                "rw/system/robottype" \
-                , ("robot-type",) \
-                , self.__root["rw"]["system"])
+            #Bugs found when robot with positioner A750
+            #self.refresh_resources( \
+            #    "rw/system/robottype" \
+            #    , ("robot-type",) \
+            #    , self.__root["rw"]["system"])
             self.refresh_resources( \
                 "rw/system/options" \
                 , ("option",) \
@@ -248,6 +249,13 @@ class RobotWebService(object):
                     #signals[state["name"]]["type"] = state["type"]
                     #signals[state["name"]]["lvalue"] = state["lvalue"]
                     signals[state["name"]] = state
+                while "next" in obj["_links"]:
+                    url = obj["_links"]["base"]["href"] + obj["_links"]["next"]["href"]
+                    resp = self.__session.get(url, timeout=self.__timeout, proxies=self.__proxies)
+                    if resp.status_code == 200:
+                        obj = json.loads(resp.text)
+                        for state in obj["_embedded"]["_state"]:
+                            signals[state["name"]] = state
             else:
                 raise RWSException(RWSException.ErrorRefreshSignals
                                    , "status_code", resp.status_code)
@@ -354,7 +362,7 @@ class RobotWebService(object):
             raise RWSException(RWSException.ErrorGetSymbolData, "get_symbol_data", -1)
 
     def refresh_cfg(self, domain, domain_type, domain_values):
-        """refresh_resources
+        """refresh_cfg
         rw/cfg/moc/MOTION_PLANNER/instances
         """
         try:
@@ -604,7 +612,7 @@ def main(argv):
             "https": "http://192.168.2.52:8600",
             }
         #web_service = RobotWebService(host="192.168.2.52", port=8612, timeout=1, proxies=proxies)
-        web_service = RobotWebService(host="10.0.2.2", port=46111, timeout=1)
+        web_service = RobotWebService(host="10.0.2.2", port=46112, timeout=2)
         web_service.refresh_priority_high()
         web_service.refresh_priority_medium()
         web_service.refresh_priority_low()
@@ -619,12 +627,13 @@ def main(argv):
         #serial_number = web_service.get_root()["rw"]["cfg"]["moc"]["ROBOT_SERIAL_NUMBER"]["rob_1"]
         #sss = serial_number["robot_serial_number_high_part"] \
             #+ "-" +serial_number["robot_serial_number_low_part"]
-        #signals = web_service.get_root()["rw"]["iosystem"]["signals"]
-        #print signals
+        signals = web_service.get_root()["rw"]["iosystem"]["signals"]
+        print len(signals)
         #signal = signals["doSysOutTaskExecuting"]
         #print signal
         #signal_value = signal["lvalue"]
         #print signal_value
+        """
         value = web_service.get_root()["symboldata"]["T_ROB1"]
         print value
         names = ("numPartCount",)
@@ -632,6 +641,7 @@ def main(argv):
             "T_ROB1", "OpcUaModule", names)
         print int(float(values["numPartCount"]))
         print int(float("6.3"))
+        """
         #print web_service.get_root()["rw"]["cfg"]
         #print web_service.get_root()["rw"]["elog"]["0"]
         #web_service.show_tree(web_service.get_root(), 1)
