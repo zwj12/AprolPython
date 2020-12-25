@@ -5,6 +5,7 @@ import os
 import sys
 import ucbbasic
 import robotwebservice
+import robotlogging
 from rwsexception import RWSException
 #import robotlogging
 
@@ -14,6 +15,7 @@ from rwsexception import RWSException
 def read_inputs(inputs, outputs):
     """read_input
     """
+    inputs['Debug'] = int(os.environ['Debug'])
     inputs['IPAddress'] = os.environ['IPAddress']
     inputs['Port'] = int(os.environ['Port'])
     inputs['UserName'] = os.environ['UserName']
@@ -25,6 +27,21 @@ def read_inputs(inputs, outputs):
     inputs['ClearElog'] = int(os.environ['ClearElog'])
     inputs['ProxyServer'] = os.environ['ProxyServer']
     inputs['ProxyPort'] = int(os.environ['ProxyPort'])
+    inputs['DioSignalName_1'] = os.environ['DioSignalName_1']
+    inputs['DioSignalName_2'] = os.environ['DioSignalName_2']
+    inputs['DioSignalName_3'] = os.environ['DioSignalName_3']
+    inputs['DioSignalName_4'] = os.environ['DioSignalName_4']
+    inputs['DioSignalName_5'] = os.environ['DioSignalName_5']
+    inputs['GioSignalName_1'] = os.environ['GioSignalName_1']
+    inputs['GioSignalName_2'] = os.environ['GioSignalName_2']
+    inputs['GioSignalName_3'] = os.environ['GioSignalName_3']
+    inputs['GioSignalName_4'] = os.environ['GioSignalName_4']
+    inputs['GioSignalName_5'] = os.environ['GioSignalName_5']
+    inputs['AioSignalName_1'] = os.environ['AioSignalName_1']
+    inputs['AioSignalName_2'] = os.environ['AioSignalName_2']
+    inputs['AioSignalName_3'] = os.environ['AioSignalName_3']
+    inputs['AioSignalName_4'] = os.environ['AioSignalName_4']
+    inputs['AioSignalName_5'] = os.environ['AioSignalName_5']
     outputs['LoopCnt'] = int(os.environ['LoopCnt'])
     outputs["ControllerName"] = os.environ['ControllerName']
     outputs["SystemID"] = os.environ['SystemID']
@@ -67,6 +84,11 @@ OUTPUTS["LnkStat"] = 0
 OUTPUTS["ErrorCode"] = 0
 OUTPUTS["ResponseCode"] = 0
 OUTPUTS["PriorityStatus"] = INPUTS["PriorityHigh"] + 2 * INPUTS["PriorityMedium"] + 4 * INPUTS["PriorityLow"]
+Logger = None
+if INPUTS['Debug']:
+    Logger = robotlogging.get_logging()
+    Logger.debug("Start to log debug data:")
+    Logger.debug(OUTPUTS)
 
 try:
 #    Proxies = None
@@ -82,14 +104,17 @@ try:
         password=INPUTS['Password'],
         timeout=INPUTS['Timeout'])
 #        proxies=Proxies)
+
     if INPUTS['PriorityHigh']:
         WS.refresh_priority_high()
         SYMBOL_NAMES = ("numPartCount",)
         SYMBOL_VALUES = WS.get_symbol_data("T_ROB1", "OpcUaModule", SYMBOL_NAMES)
         if float(SYMBOL_VALUES["numPartCount"]) >= 0:
             OUTPUTS["numPartCount"] = int(float(SYMBOL_VALUES["numPartCount"]))
+
     if INPUTS['PriorityMedium']:
         WS.refresh_priority_medium()
+
     if INPUTS['PriorityLow']:
         WS.refresh_priority_low()
         if INPUTS['ClearElog']:
@@ -102,6 +127,15 @@ try:
             if LastElogseqnum > 0:
                 OUTPUTS['LastElogseqnum'] = LastElogseqnum
     WS.close_session()
+
+    if Logger is not None:
+        Logger.debug(WS.get_root()["rw"]["system"])
+        Logger.debug(WS.get_root()["rw"]["panel"])
+        Logger.debug(WS.get_root()["rw"]["rapid"])
+        Logger.debug(WS.get_root()["rw"]["cfg"])
+        Logger.debug(WS.get_root()["rw"]["iosystem"])
+        Logger.debug(WS.get_root()["ctrl"])
+        Logger.debug(WS.get_root()["symboldata"])
 
     #Logger = robotlogging.get_logging()
     if INPUTS['PriorityHigh']:
@@ -164,9 +198,62 @@ try:
         OUTPUTS["PFgoActiveOrder_1"] = int(WS.get_root()["rw"]["iosystem"]["signals"]["PFgoActiveOrder_1"]["lvalue"])
         OUTPUTS["PFdoActiveOrderIsService_1"] = \
             int(WS.get_root()["rw"]["iosystem"]["signals"]["PFdoActiveOrderIsService_1"]["lvalue"])
+        if INPUTS['DioSignalName_1'].strip() != "":
+            OUTPUTS["DioSignalValue_1"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['DioSignalName_1']]["lvalue"])
+        if INPUTS['DioSignalName_2'].strip() != "":
+            OUTPUTS["DioSignalValue_2"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['DioSignalName_2']]["lvalue"])
+        if INPUTS['DioSignalName_3'].strip() != "":
+            OUTPUTS["DioSignalValue_3"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['DioSignalName_3']]["lvalue"])
+        if INPUTS['DioSignalName_4'].strip() != "":
+            OUTPUTS["DioSignalValue_4"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['DioSignalName_4']]["lvalue"])
+        if INPUTS['DioSignalName_5'].strip() != "":
+            OUTPUTS["DioSignalValue_5"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['DioSignalName_5']]["lvalue"])
+
+        if INPUTS['GioSignalName_1'].strip() != "":
+            OUTPUTS["GioSignalValue_1"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['GioSignalName_1']]["lvalue"])
+        if INPUTS['GioSignalName_2'].strip() != "":
+            OUTPUTS["GioSignalValue_2"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['GioSignalName_2']]["lvalue"])
+        if INPUTS['GioSignalName_3'].strip() != "":
+            OUTPUTS["GioSignalValue_3"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['GioSignalName_3']]["lvalue"])
+        if INPUTS['GioSignalName_4'].strip() != "":
+            OUTPUTS["GioSignalValue_4"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['GioSignalName_4']]["lvalue"])
+        if INPUTS['GioSignalName_5'].strip() != "":
+            OUTPUTS["GioSignalValue_5"] = \
+                int(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['GioSignalName_5']]["lvalue"])
+
+        if INPUTS['AioSignalName_1'].strip() != "":
+            OUTPUTS["AioSignalValue_1"] = \
+                float(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['AioSignalName_1']]["lvalue"])
+        if INPUTS['AioSignalName_2'].strip() != "":
+            OUTPUTS["AioSignalValue_2"] = \
+                float(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['AioSignalName_2']]["lvalue"])
+        if INPUTS['AioSignalName_3'].strip() != "":
+            OUTPUTS["AioSignalValue_3"] = \
+                float(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['AioSignalName_3']]["lvalue"])
+        if INPUTS['AioSignalName_4'].strip() != "":
+            OUTPUTS["AioSignalValue_4"] = \
+                float(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['AioSignalName_4']]["lvalue"])
+        if INPUTS['AioSignalName_5'].strip() != "":
+            OUTPUTS["AioSignalValue_5"] = \
+                float(WS.get_root()["rw"]["iosystem"]["signals"][INPUTS['AioSignalName_5']]["lvalue"])
+
+    if Logger is not None:
+        Logger.debug(OUTPUTS)
 
     if INPUTS['PriorityMedium']:
         OUTPUTS["PriorityMediumCnt"] = OUTPUTS["PriorityMediumCnt"] + 1
+
+    if Logger is not None:
+        Logger.debug(OUTPUTS)
 
     if INPUTS['PriorityLow']:
         OUTPUTS["ControllerName"] = WS.get_root()["ctrl"]["ctrl-name"]
@@ -178,6 +265,8 @@ try:
             + "-" +SERIAL_NUMBER["robot_serial_number_low_part"]
         OUTPUTS["PriorityLowCnt"] = OUTPUTS["PriorityLowCnt"] + 1
 
+    if Logger is not None:
+        Logger.debug(OUTPUTS)
 
     OUTPUTS["LnkStat"] = 1
 except RWSException, exception:
@@ -185,4 +274,8 @@ except RWSException, exception:
     OUTPUTS["ResponseCode"] = exception.response_status_code
 
 OUTPUTS["LoopCnt"] = OUTPUTS["LoopCnt"] + 1
+
+if Logger is not None:
+    Logger.debug(OUTPUTS)
+
 write_outputs(OUTPUTS)
